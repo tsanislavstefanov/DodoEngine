@@ -1,0 +1,35 @@
+#pragma once
+
+////////////////////////////////////////////////////////////////
+// C INCLUDES //////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+
+////////////////////////////////////////////////////////////////
+// C++ INCLUDES ////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+
+#include <algorithm>
+#include <array>
+#include <chrono>
+#include <iostream>
+#include <format>
+#include <limits>
+#include <map>
+#include <optional>
+#include <set>
+#include <string>
+#include <unordered_map>
+#include <queue>
+
+#include "Core/Core.h"
+#include "Memory/Ref.h"
+#include "Diagnostics/Stopwatch.h"
+
+#ifdef PLATFORM_WINDOWS
+#   define NOMINMAX
+#   include <Windows.h>
+#endif

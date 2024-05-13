@@ -1,0 +1,60 @@
+#pragma once
+
+////////////////////////////////////////////////////////////////
+// PLATFORM ////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+
+#ifdef _WIN32
+#	ifndef PLATFORM_WINDOWS
+#		define PLATFORM_WINDOWS
+#	endif
+#endif
+
+////////////////////////////////////////////////////////////////
+// CONFIGURATION ///////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+
+#ifndef CONFIGURATION_DEBUG
+#   ifdef PLATFORM_WINDOWS
+#	    ifdef _DEBUG
+#			define CONFIGURATION_DEBUG
+#	    endif
+#   endif
+#endif
+
+////////////////////////////////////////////////////////////////
+// DEBUGBREAK //////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+
+#ifdef CONFIGURATION_DEBUG
+#   ifndef DEBUGBREAK
+#       ifdef PLATFORM_WINDOWS
+#           define DEBUGBREAK() __debugbreak()
+#       else
+#           define DEBUGBREAK()
+#       endif
+#   endif
+#endif
+
+#ifdef CONFIGURATION_DEBUG
+#	ifndef ENABLE_ASSERTION
+#		define ENABLE_ASSERTION
+#	endif
+#   ifndef ASSERT
+#       ifdef ENABLE_ASSERTION
+#           include "Diagnostics/Log.h"
+#           define ASSERT(CONDITION, ...) if (!(CONDITION)) { LOG_CORE_ERROR(__VA_ARGS__); DEBUGBREAK(); }
+#           define VERIFY(CONDITION) if (!(CONDITION)) { DEBUGBREAK(); }
+#       else
+#           define ASSERT()
+#       endif
+#   endif
+#endif
+
+////////////////////////////////////////////////////////////////
+// OTHER UTILS /////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+
+#ifndef DISCARD_MAYBE_UNUSED
+#   define DISCARD_MAYBE_UNUSED(X) static_cast<void>(X)
+#endif
