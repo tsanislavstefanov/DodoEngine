@@ -58,17 +58,17 @@ private:
     struct VulkanInstance
     {
         uint32_t                    ApiVersion = VK_API_VERSION_1_0;
-        std::set<const char*>       SupportedExtensions{};
-        std::map<const char*, bool> RequestedExtensions{};
-        std::set<const char*>       EnabledExtensions{};
+        std::set<std::string>       SupportedExtensions{};
+        std::map<std::string, bool> RequestedExtensions{};
+        std::set<std::string>       EnabledExtensions{};
         VkInstance                  Handle     = VK_NULL_HANDLE;
     };
 
     void InitInstance();
 
-    const char* GetSurfaceExtension() const;
+    [[nodiscard]] static std::string GetSurfaceExtension() ;
 
-    void DisposeInstance();
+    void DisposeInstance() const;
 
     VulkanInstance m_Instance{};
     const char*    m_LayerName  = "VK_LAYER_KHRONOS_validation";
@@ -90,7 +90,7 @@ private:
 
     void InitDebugMessenger();
 
-    void DisposeDebugMessenger();
+    void DisposeDebugMessenger() const;
 
     VulkanDebugMessenger m_DebugMessenger{};
 
@@ -107,7 +107,7 @@ private:
 
     void InitSurface();
 
-    void DisposeSurface();
+    void DisposeSurface() const;
 
     VulkanSurface m_Surface{};
 
@@ -194,13 +194,13 @@ private:
 
     void QuerySwapchainSupportDetails();
 
-    bool AreSwapchainSupportDetailsAdequate() const;
+    [[nodiscard]] bool AreSwapchainSupportDetailsAdequate() const;
 
-    VkSurfaceFormatKHR SelectSwapchainSurfaceFormat() const;
+    [[nodiscard]] VkSurfaceFormatKHR SelectSwapchainSurfaceFormat() const;
 
-    VkPresentModeKHR SelectSwapchainPresentMode() const;
+    [[nodiscard]] VkPresentModeKHR SelectSwapchainPresentMode() const;
 
-    VkExtent2D SelectSwapchainExtent() const;
+    [[nodiscard]] VkExtent2D SelectSwapchainExtent() const;
 
     void DisposeSwapchain();
 

@@ -9,9 +9,9 @@ class Stopwatch
 public:
     Stopwatch() = default;
 
-    double GetAsMilliseconds() const;
+    [[nodiscard]] double GetAsMilliseconds() const;
 
-    double GetAsSeconds() const
+    [[nodiscard]] double GetAsSeconds() const
     {
         return GetAsMilliseconds() * 0.001;
     }

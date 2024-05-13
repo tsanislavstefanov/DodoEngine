@@ -12,6 +12,7 @@ class RefCounted
 {
 public:
     RefCounted() = default;
+
     virtual ~RefCounted() = default;
 
     [[nodiscard]] uint64_t GetRefCount() const
@@ -51,11 +52,11 @@ public:
         : m_Instance(nullptr)
     {}
 
-    explicit Ref(std::nullptr_t)
+    Ref(std::nullptr_t)
         : m_Instance(nullptr)
     {}
 
-    explicit Ref(Type* instance)
+    Ref(Type* instance)
         : m_Instance(instance)
     {
         Reference();
@@ -68,14 +69,14 @@ public:
     }
 
     template<typename Other>
-    explicit Ref(const Ref<Other>& other)
+    Ref(const Ref<Other>& other)
         : m_Instance(static_cast<Type*>(other.m_Instance))
     {
         Reference();
     }
 
     template<typename Other>
-    explicit Ref(Ref<Other>&& other)
+    Ref(Ref<Other>&& other)
         : m_Instance(static_cast<Type*>(other.m_Instance))
     {
         other.m_Instance = nullptr;
@@ -125,7 +126,7 @@ public:
         return *this;
     }
 
-    explicit operator bool() const
+    operator bool() const
     {
         return m_Instance != nullptr;
     }
@@ -161,13 +162,13 @@ public:
     }
 
     template<typename Other>
-    Ref<Other> As()
+    Ref<Other> CastTo()
     {
         return Ref<Other>(*this);
     }
 
     template<typename Other>
-    Ref<Other> As() const
+    Ref<Other> CastTo() const
     {
         return Ref<Other>(*this);
     }

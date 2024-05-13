@@ -91,7 +91,7 @@ public:
         return s_CoreLogger;
     }
 
-    static void Deinit();
+    static void DeInit();
 
 private:
     static std::shared_ptr<Logger> s_CoreLogger;

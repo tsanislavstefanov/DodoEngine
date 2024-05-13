@@ -30,13 +30,12 @@ private:
     struct Sink
     {
         static constexpr auto MaxSinkCount = static_cast<size_t>(LogLevel::AutoCount);
-        std::array<std::string, MaxSinkCount> Colors =
-        {
-            "\033[32m", // debug  : green
-            "\033[36m", // info   : cyan
-            "\033[33m", // warning: yellow
-            "\033[31m", // error  : red
-            "\033[35m"  // fatal  : magenta
+        std::array<std::string, MaxSinkCount> Colors = {
+            "\033[32m", // Debug  : Green.
+            "\033[36m", // Info   : Cyan.
+            "\033[33m", // Warning: Yellow.
+            "\033[31m", // Error  : Red.
+            "\033[35m"  // Fatal  : Magenta.
         };
         std::string Off = "\033[0m";
     };
@@ -68,7 +67,7 @@ void Log::Init()
     s_CoreLogger = Logger::Create(LoggerType::Console);
 }
 
-void Log::Deinit()
+void Log::DeInit()
 {
     s_CoreLogger.reset();
 }

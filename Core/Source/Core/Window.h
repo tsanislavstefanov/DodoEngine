@@ -33,14 +33,10 @@ struct WindowResizeEvent
 class Window : public RefCounted
 {
 public:
-    static std::unique_ptr<Window> Create(const WindowSpecs& specs);
+    static Ref<Window> Create(const WindowSpecs& specs);
 
     Signal<const WindowResizeEvent&> Resize{};
-    Signal<> Focus{};
-    Signal<> FocusLost{};
     Signal<> Close{};
-
-    virtual ~Window() = default;
 
     [[nodiscard]] virtual void* GetHandle() const = 0;
 

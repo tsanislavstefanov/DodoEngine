@@ -15,7 +15,7 @@ class Signal
 public:
     Signal() = default;
 
-    explicit operator bool() const
+    operator bool() const
     {
         return IsEmpty();
     }

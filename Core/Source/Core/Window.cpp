@@ -8,10 +8,10 @@
 // WINDOW //////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
-std::unique_ptr<Window> Window::Create(const WindowSpecs& specs)
+Ref<Window> Window::Create(const WindowSpecs& specs)
 {
 #ifdef PLATFORM_WINDOWS
-    return std::make_unique<WindowsWindow>(specs);
+    return Ref<WindowsWindow>::Create(specs);
 #endif
 
     ASSERT(false, "Platform not supported!");

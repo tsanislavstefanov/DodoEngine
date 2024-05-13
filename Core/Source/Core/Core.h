@@ -23,18 +23,22 @@
 #endif
 
 ////////////////////////////////////////////////////////////////
-// DEBUGBREAK //////////////////////////////////////////////////
+// DEBUG BREAK /////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
 #ifdef CONFIGURATION_DEBUG
-#   ifndef DEBUGBREAK
+#   ifndef DEBUG_BREAK
 #       ifdef PLATFORM_WINDOWS
-#           define DEBUGBREAK() __debugbreak()
-#       else
-#           define DEBUGBREAK()
+#           define DEBUG_BREAK() __debugbreak()
 #       endif
 #   endif
+#else
+#   define DEBUG_BREAK()
 #endif
+
+////////////////////////////////////////////////////////////////
+// ASSERTION ///////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
 
 #ifdef CONFIGURATION_DEBUG
 #	ifndef ENABLE_ASSERTION
@@ -43,8 +47,8 @@
 #   ifndef ASSERT
 #       ifdef ENABLE_ASSERTION
 #           include "Diagnostics/Log.h"
-#           define ASSERT(CONDITION, ...) if (!(CONDITION)) { LOG_CORE_ERROR(__VA_ARGS__); DEBUGBREAK(); }
-#           define VERIFY(CONDITION) if (!(CONDITION)) { DEBUGBREAK(); }
+#           define ASSERT(CONDITION, ...) if (!(CONDITION)) { LOG_CORE_ERROR(__VA_ARGS__); DEBUG_BREAK(); }
+#           define VERIFY(CONDITION) if (!(CONDITION)) { DEBUG_BREAK(); }
 #       else
 #           define ASSERT()
 #       endif

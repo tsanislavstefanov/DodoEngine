@@ -75,14 +75,14 @@ public:
         return m_Specs;
     }
 
-    Window& GetWindow()
+    Ref<Window> GetWindow()
     {
-        return *m_Window;
+        return m_Window;
     }
 
-    [[nodiscard]] const Window& GetWindow() const
+    [[nodiscard]] Ref<Window> GetWindow() const
     {
-        return *m_Window;
+        return m_Window;
     }
 
     void Run();
@@ -107,9 +107,9 @@ private:
 
     void Dispose();
 
-    ApplicationSpecs        m_Specs;
-    std::unique_ptr<Window> m_Window    = nullptr;
-    bool                    m_IsRunning = true;
-    Stopwatch               m_FrameRateWatch{};
-    uint32_t                m_FrameRate = 0;
+    ApplicationSpecs m_Specs;
+    Ref<Window>      m_Window    = nullptr;
+    bool             m_IsRunning = true;
+    Stopwatch        m_FrameRateWatch{};
+    uint32_t         m_FrameRate = 0;
 };

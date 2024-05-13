@@ -13,6 +13,6 @@ int main(int argc, char** argv)
     application->Run();
     delete application;
 
-    Log::Deinit();
+    Log::DeInit();
     return 0;
 }

@@ -9,15 +9,15 @@
 class WindowsWindow : public Window
 {
 public:
-    WindowsWindow(const WindowSpecs& specs);
+    explicit WindowsWindow(const WindowSpecs& specs);
 
-    HINSTANCE GetModule() const
+    [[nodiscard]] HINSTANCE GetModule() const
     {
         return m_Module;
     }
 
     // Inherited via [Window].
-    void* GetHandle() const override
+    [[nodiscard]] void* GetHandle() const override
     {
         return m_Handle;
     }
@@ -32,5 +32,5 @@ private:
     static LRESULT CALLBACK Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam);
 
     HINSTANCE m_Module = nullptr;
-    HWND m_Handle = nullptr;
+    HWND      m_Handle = nullptr;
 };

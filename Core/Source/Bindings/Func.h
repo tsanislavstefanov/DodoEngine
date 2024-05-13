@@ -16,7 +16,7 @@ class Func<Result(Args...)>
 public:
     Func() = default;
 
-    explicit operator bool() const
+    operator bool() const
     {
         return m_Invocation.Callback != nullptr;
     }

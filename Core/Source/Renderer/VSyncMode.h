@@ -8,7 +8,7 @@ enum class VSyncMode
 {
     Disable  ,
     Enable   ,
-    Mailbox  , // Triple buffering.
+    Mailbox  ,
     AutoCount,
     None
 };

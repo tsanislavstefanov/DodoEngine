@@ -7,9 +7,9 @@
 
 namespace Utils {
 
-    static KeyCode ConvertToKeyCode(SHORT vkey)
+    static KeyCode ConvertToKeyCode(SHORT virtualKey)
     {
-        switch (vkey)
+        switch (virtualKey)
         {
             case VK_LEFT : return KeyCode::LeftArrow;
             case VK_UP   : return KeyCode::UpArrow;
@@ -26,6 +26,7 @@ namespace Utils {
             case '8'     : return KeyCode::Alpha8;
             case '9'     : return KeyCode::Alpha9;
             case 'A'     : return KeyCode::A;
+            default: ASSERT(false, "KeyCode not supported!");
         }
         
         return KeyCode::None;
@@ -49,6 +50,7 @@ WindowsKeyboard::WindowsKeyboard()
 
 bool WindowsKeyboard::Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam)
 {
+    DISCARD_MAYBE_UNUSED(handle);
     switch (msg)
     {
         case WM_SYSKEYDOWN:
@@ -56,10 +58,12 @@ bool WindowsKeyboard::Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lpa
         case WM_KEYDOWN:
         case WM_KEYUP:
         {
-            const auto vkey = static_cast<SHORT>(wparam);
-            const KeyCode keyCode = Utils::ConvertToKeyCode(vkey);
+            const auto    virtualKey = static_cast<short>(wparam);
+            const KeyCode keyCode    = Utils::ConvertToKeyCode(virtualKey);
             return (HIWORD(lparam) & KF_UP) ? OnKeyUp(keyCode) : OnKeyDown(keyCode);
         }
+
+        default: break;
     }
 
     return false;
@@ -80,9 +84,9 @@ bool WindowsMouse::Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam
     {
         case WM_MOUSEWHEEL:
         {
-            const SHORT zDelta = GET_WHEEL_DELTA_WPARAM(wparam);
+            const auto zDelta = static_cast<int>(GET_WHEEL_DELTA_WPARAM(wparam));
             // Normalize between -1.0 and 1.0.
-            const auto wheelDelta = static_cast<float>(zDelta / WHEEL_DELTA);
+            const auto wheelDelta = static_cast<float>(zDelta) / WHEEL_DELTA;
             return OnWheelScroll(wheelDelta);
         }
 
@@ -102,6 +106,8 @@ bool WindowsMouse::Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam
 
             return true;
         }
+
+        default: break;
     }
 
     return false;

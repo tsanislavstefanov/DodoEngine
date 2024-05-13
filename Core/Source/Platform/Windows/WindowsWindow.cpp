@@ -15,21 +15,21 @@ WindowsWindow::WindowsWindow(const WindowSpecs& specs)
     m_Module      = GetModuleHandleW(NULL);
 
     const WCHAR className[] = L"WindowClass";
-    WNDCLASSEXW wcex{};
-    ZeroMemory(&wcex, sizeof(WNDCLASSEXW));
-    wcex.cbSize        = sizeof(WNDCLASSEXW);
-    wcex.style         = CS_OWNDC;
-    wcex.lpfnWndProc   = Win32Proc;
-    wcex.cbClsExtra    = 0;
-    wcex.cbWndExtra    = 0;
-    wcex.hInstance     = m_Module;
-    wcex.hIcon         = NULL;
-    wcex.hCursor       = LoadCursor(NULL, IDC_ARROW);
-    wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
-    wcex.lpszMenuName  = L"";
-    wcex.lpszClassName = className;
-    wcex.hIconSm       = NULL;
-    RegisterClassExW(&wcex);
+    WNDCLASSEXW wndclass{};
+    ZeroMemory(&wndclass, sizeof(WNDCLASSEXW));
+    wndclass.cbSize        = sizeof(WNDCLASSEXW);
+    wndclass.style         = CS_OWNDC;
+    wndclass.lpfnWndProc   = Win32Proc;
+    wndclass.cbClsExtra    = 0;
+    wndclass.cbWndExtra    = 0;
+    wndclass.hInstance     = m_Module;
+    wndclass.hIcon         = nullptr;
+    wndclass.hCursor       = LoadCursor(nullptr, IDC_ARROW);
+    wndclass.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
+    wndclass.lpszMenuName  = L"";
+    wndclass.lpszClassName = className;
+    wndclass.hIconSm       = nullptr;
+    RegisterClassExW(&wndclass);
 
     RECT rect{};
     ZeroMemory(&rect, sizeof(RECT));
@@ -62,7 +62,7 @@ void WindowsWindow::PollEvents()
 {
     MSG msg{};
     ZeroMemory(&msg, sizeof(MSG));
-    while (PeekMessageW(&msg, 0, 0, 0, PM_REMOVE))
+    while (PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE))
     {
         // Translate virtual key message into character message.
         TranslateMessage(&msg);
@@ -94,14 +94,12 @@ LRESULT WindowsWindow::Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lp
         case WM_SETFOCUS:
         {
             windowData.HasFocus = true;
-            window.Focus.Emit();
             break;
         }
 
         case WM_KILLFOCUS:
         {
             windowData.HasFocus = false;
-            window.FocusLost.Emit();
             break;
         }
 
@@ -129,6 +127,8 @@ LRESULT WindowsWindow::Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lp
             ::PostQuitMessage(0);
             break;
         }
+
+        default: break;
     }
 
     if (WindowsInput::Win32Proc(handle, msg, wparam, lparam))

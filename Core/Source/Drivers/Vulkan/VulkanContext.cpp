@@ -57,9 +57,8 @@ namespace Utils {
             case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT   : return "Info";
             case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: return "Warning";
             case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT  : return "Error";
+            default                                             : return "Unknown";
         }
-
-        return "Unknown";
     }
 
     static const char* ConvertMessageTypeToString(VkDebugUtilsMessageTypeFlagsEXT messageType)
@@ -69,9 +68,8 @@ namespace Utils {
             case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT    : return "General";
             case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT : return "Validation";
             case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT: return "Performance";
+            default                                             : return "Unknown";
         }
-
-        return "Unknown";
     }
 
     static VkPresentModeKHR ConvertToVkPresentMode(VSyncMode vsyncMode)
@@ -81,9 +79,10 @@ namespace Utils {
             case VSyncMode::Disable: return VK_PRESENT_MODE_IMMEDIATE_KHR;
             case VSyncMode::Enable : return VK_PRESENT_MODE_FIFO_KHR;
             case VSyncMode::Mailbox: return VK_PRESENT_MODE_MAILBOX_KHR;
+            default                : ASSERT(false, "V-Sync mode not supported!");
         }
 
-        ASSERT(false, "V-Sync mode not supported!");
+        return VK_PRESENT_MODE_MAX_ENUM_KHR;
     }
 
 }
@@ -155,15 +154,15 @@ void VulkanContext::InitInstance()
     m_Instance.RequestedExtensions.insert({ VK_EXT_DEBUG_UTILS_EXTENSION_NAME, false });
 
     // Enable requested & supported extensions.
-    for (auto& [name, required] : m_Instance.RequestedExtensions)
+    for (const auto& [name, required] : m_Instance.RequestedExtensions)
     {
         if (!m_Instance.SupportedExtensions.contains(name))
         {
-            if (required) // Required extension not supported..?
+            if (required) // Required extension not supported?
             {
                 ASSERT(false, "Required instance extension {0} not found, is a driver installed?", name);
             }
-            else // Optional extension not supported..?
+            else // Optional extension not supported?
             {
                 LOG_CORE_WARNING("Optional instance extension {0} not found!", name);
                 continue;
@@ -173,7 +172,7 @@ void VulkanContext::InitInstance()
         m_Instance.EnabledExtensions.insert(name);
     }
 
-    // Find validation layers.
+    // Find validation layer(s).
     if (m_Instance.EnabledExtensions.contains(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
     {
         uint32_t layerCount = 0;
@@ -182,7 +181,7 @@ void VulkanContext::InitInstance()
         VERIFY_VK_RESULT(vkEnumerateInstanceLayerProperties(&layerCount, layers.data()));
         for (const auto& layer : layers)
         {
-            if (std::strcmp(m_LayerName, layer.layerName))
+            if (std::strcmp(m_LayerName, layer.layerName) != 0)
             {
                 m_LayerFound = true;
                 break;
@@ -190,16 +189,14 @@ void VulkanContext::InitInstance()
         }
     }
 
-    // Convert enabled extensions to array because Vulkan expects
-    // that format.
-    uint32_t extensionIndex = 0;
-    static constexpr size_t MaxExtensionCount = 64;
-    std::array<const char*, MaxExtensionCount> enabledExtensions{};
-    for (auto extension : m_Instance.EnabledExtensions)
+    // Convert enabled extensions to array because Vulkan expects that format.
+    std::vector<const char*> enabledExtensions{};
+    for (const auto& extension : m_Instance.EnabledExtensions)
     {
-        enabledExtensions[extensionIndex++] = extension;
+        enabledExtensions.push_back(extension.c_str());
     }
 
+    // Create instance.
     VkApplicationInfo appInfo{};
     appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName   = "Dodo Engine";
@@ -207,7 +204,6 @@ void VulkanContext::InitInstance()
     appInfo.pEngineName        = "Dodo";
     appInfo.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
     appInfo.apiVersion         = m_Instance.ApiVersion;
-
     VkInstanceCreateInfo createInfo{};
     createInfo.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo        = &appInfo;
@@ -215,19 +211,18 @@ void VulkanContext::InitInstance()
     createInfo.ppEnabledLayerNames     = m_LayerFound ? &m_LayerName : nullptr;
     createInfo.enabledExtensionCount   = static_cast<uint32_t>(enabledExtensions.size());
     createInfo.ppEnabledExtensionNames = enabledExtensions.data();
-    vkCreateInstance(&createInfo, nullptr, &m_Instance.Handle);
+    VERIFY_VK_RESULT(vkCreateInstance(&createInfo, nullptr, &m_Instance.Handle));
 }
 
-const char* VulkanContext::GetSurfaceExtension() const
+std::string VulkanContext::GetSurfaceExtension()
 {
 #ifdef PLATFORM_WINDOWS
     return VK_KHR_WIN32_SURFACE_EXTENSION_NAME;
 #endif
-
     ASSERT(false, "Platform not supported!");
 }
 
-void VulkanContext::DisposeInstance()
+void VulkanContext::DisposeInstance() const
 {
     vkDestroyInstance(m_Instance.Handle, nullptr);
 }
@@ -264,7 +259,7 @@ void VulkanContext::InitDebugMessenger()
     }
 }
 
-void VulkanContext::DisposeDebugMessenger()
+void VulkanContext::DisposeDebugMessenger() const
 {
     if (m_LayerFound)
     {
@@ -278,20 +273,20 @@ void VulkanContext::DisposeDebugMessenger()
 
 void VulkanContext::InitSurface()
 {
-    const auto& window = Application::GetCurrent().GetWindow();
-    m_Surface.Width    = window.GetWidth ();
-    m_Surface.Height   = window.GetHeight();
+    const auto window = Application::GetCurrent().GetWindow();
+    m_Surface.Width    = window->GetWidth ();
+    m_Surface.Height   = window->GetHeight();
 
 #ifdef PLATFORM_WINDOWS
     VkWin32SurfaceCreateInfoKHR createInfo{};
     createInfo.sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    createInfo.hwnd      = static_cast<HWND>(window.GetHandle());
-    createInfo.hinstance = static_cast<const WindowsWindow&>(window).GetModule();
+    createInfo.hwnd      = static_cast<HWND>(window->GetHandle());
+    createInfo.hinstance = window.CastTo<WindowsWindow>()->GetModule();
     VERIFY_VK_RESULT(vkCreateWin32SurfaceKHR(m_Instance.Handle, &createInfo, nullptr, &m_Surface.Handle));
 #endif
 }
 
-void VulkanContext::DisposeSurface()
+void VulkanContext::DisposeSurface() const
 {
     vkDestroySurfaceKHR(m_Instance.Handle, m_Surface.Handle, nullptr);
 }
@@ -344,11 +339,11 @@ void VulkanContext::InitAdapter()
                     { 0x8086, "Intel"    }
                 };
 
-                for (size_t i = 0; i < MaxVendorCount; i++)
+                for (const auto& vendor : vendors)
                 {
-                    if (vendors[i].ID == Properties.vendorID)
+                    if (vendor.ID == Properties.vendorID)
                     {
-                        m_Adapter.VendorName = vendors[i].Name;
+                        m_Adapter.VendorName = vendor.Name;
                         break;
                     }
                 }
@@ -463,7 +458,7 @@ void VulkanContext::InitDevice()
     uint32_t extensionIndex = 0;
     const size_t MaxExtensionCount = 64;
     std::array<const char*, MaxExtensionCount> enabledExtensions{};
-    for (auto extension : m_Instance.EnabledExtensions)
+    for (auto extension : m_Device.EnabledExtensions)
     {
         enabledExtensions[extensionIndex++] = extension;
     }

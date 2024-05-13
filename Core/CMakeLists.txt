@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Add include directories
 include_directories(Source)
+# TODO: ThirdParty includes.
 
 # Add all header & source files
 file(GLOB_RECURSE HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/Source/*.h)
@@ -14,7 +15,7 @@ file(GLOB_RECURSE SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/Source/*.cpp)
 
 # Add precompiled header
 set(PCH_FILE pch.h)
-set(PCH_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Source/${PCH_FILE}")
+set(PCH_FILE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/Source/${PCH_FILE})
 
 # Add Vulkan dependencies
 find_package(Vulkan REQUIRED)
