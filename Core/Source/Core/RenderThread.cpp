@@ -5,6 +5,7 @@ namespace Dodo {
 
     RenderThread::RenderThread(ThreadPolicy policy)
         : m_ThreadPolicy(policy)
+        , m_Thread(Thread::Create("RenderThread"))
     {}
 
     void RenderThread::Run()
@@ -14,11 +15,6 @@ namespace Dodo {
         {
 
         }
-    }
-
-    void RenderThread::Dispatch()
-    {
-
     }
 
 }

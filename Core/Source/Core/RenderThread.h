@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Thread.h"
+
 namespace Dodo {
 
     ////////////////////////////////////////////////////////////////
@@ -26,11 +28,8 @@ namespace Dodo {
         void Run();
 
     private:
-        void Dispatch();
-
         ThreadPolicy m_ThreadPolicy = ThreadPolicy::None;
         bool         m_IsRunning    = false;
-        std::thread  m_Thread{};
-        std::string  m_ThreadName   = "RenderThread";
+        Ref<Thread>  m_Thread       = nullptr;
     };
 }
