@@ -32,8 +32,6 @@
 #           define DEBUG_BREAK() __debugbreak()
 #       endif
 #   endif
-#else
-#   define DEBUG_BREAK()
 #endif
 
 ////////////////////////////////////////////////////////////////
@@ -59,6 +57,6 @@
 // OTHER UTILS /////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
-#ifndef DISCARD_MAYBE_UNUSED
-#   define DISCARD_MAYBE_UNUSED(X) static_cast<void>(X)
+#ifndef DODO_MAYBE_UNUSED
+#   define DODO_MAYBE_UNUSED(X) static_cast<void>(X)
 #endif

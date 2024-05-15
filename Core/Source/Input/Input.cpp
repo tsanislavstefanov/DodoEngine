@@ -3,58 +3,62 @@
 #include "Keyboard.h"
 #include "Mouse.h"
 
-////////////////////////////////////////////////////////////////
-// INPUT ///////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+namespace Dodo {
 
-Keyboard* Input::s_Keyboard = nullptr;
-Mouse* Input::s_Mouse = nullptr;
+    ////////////////////////////////////////////////////////////////
+    // INPUT ///////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-bool Input::GetKey(KeyCode keyCode)
-{
-    ASSERT(s_Keyboard, "Keyboard not assigned!");
-    return s_Keyboard->GetKey(keyCode);
-}
+    Keyboard* Input::Keyboard = nullptr;
+    Mouse*    Input::Mouse    = nullptr;
 
-bool Input::GetKeyDown(KeyCode keyCode)
-{
-    ASSERT(s_Keyboard, "Keyboard not assigned!");
-    return s_Keyboard->GetKeyDown(keyCode);
-}
+    bool Input::GetKey(KeyCode keyCode)
+    {
+        ASSERT(Keyboard, "Keyboard not assigned!");
+        return Keyboard->GetKey(keyCode);
+    }
 
-bool Input::GetKeyUp(KeyCode keyCode)
-{
-    ASSERT(s_Keyboard, "Keyboard not assigned!");
-    return s_Keyboard->GetKeyUp(keyCode);
-}
+    bool Input::GetKeyDown(KeyCode keyCode)
+    {
+        ASSERT(Keyboard, "Keyboard not assigned!");
+        return Keyboard->GetKeyDown(keyCode);
+    }
 
-float Input::GetMouseWheelDelta()
-{
-    ASSERT(s_Mouse, "Mouse not assigned!");
-    return s_Mouse->GetWheelDelta();
-}
+    bool Input::GetKeyUp(KeyCode keyCode)
+    {
+        ASSERT(Keyboard, "Keyboard not assigned!");
+        return Keyboard->GetKeyUp(keyCode);
+    }
 
-bool Input::GetMouseButton(MouseCode mouseCode)
-{
-    ASSERT(s_Mouse, "Mouse not assigned!");
-    return s_Mouse->GetButton(mouseCode);
-}
+    float Input::GetMouseWheelDelta()
+    {
+        ASSERT(Mouse, "Mouse not assigned!");
+        return Mouse->GetWheelDelta();
+    }
 
-bool Input::GetMouseButtonDown(MouseCode mouseCode)
-{
-    ASSERT(s_Mouse, "Mouse not assigned!");
-    return s_Mouse->GetButtonDown(mouseCode);
-}
+    bool Input::GetMouseButton(MouseCode mouseCode)
+    {
+        ASSERT(Mouse, "Mouse not assigned!");
+        return Mouse->GetButton(mouseCode);
+    }
 
-bool Input::GetMouseButtonUp(MouseCode mouseCode)
-{
-    ASSERT(s_Mouse, "Mouse not assigned!");
-    return s_Mouse->GetButtonUp(mouseCode);
-}
+    bool Input::GetMouseButtonDown(MouseCode mouseCode)
+    {
+        ASSERT(Mouse, "Mouse not assigned!");
+        return Mouse->GetButtonDown(mouseCode);
+    }
 
-void Input::Update()
-{
-    s_Keyboard->Update();
-    s_Mouse->Update();
-    // TODO: Other inputs (GamePad, etc.)
+    bool Input::GetMouseButtonUp(MouseCode mouseCode)
+    {
+        ASSERT(Mouse, "Mouse not assigned!");
+        return Mouse->GetButtonUp(mouseCode);
+    }
+
+    void Input::Update()
+    {
+        Keyboard->Update();
+        Mouse->Update();
+        // TODO: Other inputs (GamePad, etc.)
+    }
+
 }

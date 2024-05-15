@@ -1,73 +1,77 @@
 #include "pch.h"
-#include "log.h"
-#include "core/platform.h"
+#include "Log.h"
+#include "Core/Platform.h"
 
-////////////////////////////////////////////////////////////////
-// CONSOLE LOGGER //////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+namespace Dodo {
 
-class ConsoleLogger : public Logger
-{
-public:
-    ConsoleLogger() = default;
+    ////////////////////////////////////////////////////////////////
+    // CONSOLE LOGGER //////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-    void WriteLog(LogLevel level, const std::string& message) override
+    class ConsoleLogger : public Logger
     {
-        std::string dateTime  = Platform::GetDatetimeAsString();
-        const auto  sinkIndex = static_cast<size_t>(level);
-        std::cout << std::format("{0}: {1}{2}{3}\n",
-                                 dateTime,
-                                 m_Sink.Colors.at(sinkIndex),
-                                 message,
-                                 m_Sink.Off);
-    }
+    public:
+        ConsoleLogger() = default;
 
-private:
-    ////////////////////////////////////////////////////////////
-    // SINK ////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////
+        void WriteLog(LogLevel level, const std::string &message) override
+        {
+            std::string dateTime  = Platform::GetDatetimeAsString();
+            const auto  sinkIndex = static_cast<size_t>(level);
+            std::cout << std::format("{0}: {1}{2}{3}\n",
+                                     dateTime,
+                                     m_Sink.Colors.at(sinkIndex),
+                                     message,
+                                     m_Sink.Off);
+        }
 
-    struct Sink
-    {
-        static constexpr auto MaxSinkCount = static_cast<size_t>(LogLevel::AutoCount);
-        std::array<std::string, MaxSinkCount> Colors = {
-            "\033[32m", // Debug  : Green.
-            "\033[36m", // Info   : Cyan.
-            "\033[33m", // Warning: Yellow.
-            "\033[31m", // Error  : Red.
-            "\033[35m"  // Fatal  : Magenta.
+    private:
+        ////////////////////////////////////////////////////////////
+        // SINK ////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////
+
+        struct Sink
+        {
+            static constexpr auto MaxSinkCount = static_cast<size_t>(LogLevel::AutoCount);
+            std::array<std::string, MaxSinkCount> Colors = {
+                    "\033[32m", // Debug  : Green.
+                    "\033[36m", // Info   : Cyan.
+                    "\033[33m", // Warning: Yellow.
+                    "\033[31m", // Error  : Red.
+                    "\033[35m"  // Fatal  : Magenta.
+            };
+            std::string Off = "\033[0m";
         };
-        std::string Off = "\033[0m";
+
+        Sink m_Sink{};
     };
 
-    Sink m_Sink{};
-};
+    ////////////////////////////////////////////////////////////////
+    // LOGGER //////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////
-// LOGGER //////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-
-std::shared_ptr<Logger> Logger::Create(LoggerType type)
-{
-    switch (type)
+    std::shared_ptr<Logger> Logger::Create(LoggerType type)
     {
-        case LoggerType::Console: return std::make_shared<ConsoleLogger>();
-        default:                  return nullptr;
+        switch (type)
+        {
+            case LoggerType::Console: return std::make_shared<ConsoleLogger>();
+            default:                  return nullptr;
+        }
     }
-}
 
-////////////////////////////////////////////////////////////////
-// LOG /////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+    // LOG /////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-std::shared_ptr<Logger> Log::s_CoreLogger = nullptr;
+    std::shared_ptr<Logger> Log::s_CoreLogger = nullptr;
 
-void Log::Init()
-{
-    s_CoreLogger = Logger::Create(LoggerType::Console);
-}
+    void Log::Init()
+    {
+        s_CoreLogger = Logger::Create(LoggerType::Console);
+    }
 
-void Log::DeInit()
-{
-    s_CoreLogger.reset();
+    void Log::DeInit()
+    {
+        s_CoreLogger.reset();
+    }
+
 }

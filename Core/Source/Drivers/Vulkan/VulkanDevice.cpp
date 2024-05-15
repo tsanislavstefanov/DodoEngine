@@ -1,31 +1,35 @@
 #include "pch.h"
 #include "VulkanDevice.h"
 
-////////////////////////////////////////////////////////////////
-// VULKAN DEVICE ///////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+namespace Dodo {
 
-VulkanDevice::VulkanDevice()
-{
-    m_Context = std::make_unique<VulkanContext>();
-}
+    ////////////////////////////////////////////////////////////////
+    // VULKAN DEVICE ///////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-void VulkanDevice::BeginFrame()
-{
-    m_Context->PrepareBuffers();
-}
+    VulkanDevice::VulkanDevice()
+    {
+        m_Context = std::make_unique<VulkanContext>();
+    }
 
-void VulkanDevice::Resize(uint32_t width, uint32_t height)
-{
-    m_Context->Resize(width, height);
-}
+    void VulkanDevice::BeginFrame()
+    {
+        m_Context->PrepareBuffers();
+    }
 
-void VulkanDevice::EndFrame()
-{
-    m_Context->SwapBuffers();
-}
+    void VulkanDevice::Resize(uint32_t width, uint32_t height)
+    {
+        m_Context->Resize(width, height);
+    }
 
-void VulkanDevice::Dispose()
-{
-    m_Context->Dispose();
+    void VulkanDevice::EndFrame()
+    {
+        m_Context->SwapBuffers();
+    }
+
+    void VulkanDevice::Dispose()
+    {
+        m_Context->Dispose();
+    }
+
 }

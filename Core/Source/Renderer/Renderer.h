@@ -2,24 +2,28 @@
 
 #include "RenderSettings.h"
 
-////////////////////////////////////////////////////////////////
-// RENDERER ////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+namespace Dodo {
 
-class Renderer
-{
-public:
-    static const RenderSettings& GetSettings();
+    ////////////////////////////////////////////////////////////////
+    // RENDERER ////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-    static void SetSettings(const RenderSettings& settings);
+    class Renderer
+    {
+    public:
+        static const RenderSettings& GetSettings();
 
-    static void Init();
+        static void SetSettings(const RenderSettings& settings);
 
-    static void BeginFrame();
+        static void Init();
 
-    static void Resize(uint32_t width, uint32_t height);
+        static void BeginFrame();
 
-    static void EndFrame();
+        static void Resize(uint32_t width, uint32_t height);
 
-    static void Dispose();
-};
+        static void EndFrame();
+
+        static void Dispose();
+    };
+
+}

@@ -3,87 +3,91 @@
 #include "KeyCode.h"
 #include "Bindings/Signal.h"
 
-////////////////////////////////////////////////////////////////
-// KEY DOWN EVENT //////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+namespace Dodo {
 
-struct KeyDownEvent
-{
-    const KeyCode Code;
+    ////////////////////////////////////////////////////////////////
+    // KEY DOWN EVENT //////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-    explicit KeyDownEvent(KeyCode keyCode)
-        : Code(keyCode)
-    {}
-};
-
-////////////////////////////////////////////////////////////////
-// KEY UP EVENT ////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-
-struct KeyUpEvent
-{
-    const KeyCode Code;
-
-    explicit KeyUpEvent(KeyCode keyCode)
-        : Code(keyCode)
-    {}
-};
-
-////////////////////////////////////////////////////////////////
-// KEYBOARD ////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-
-class Keyboard
-{
-public:
-    Signal<const KeyDownEvent&> KeyDown{};
-    Signal<const KeyUpEvent&> KeyUp{};
-
-    virtual ~Keyboard() = default;
-
-    [[nodiscard]] bool GetKey(KeyCode keyCode) const
+    struct KeyDownEvent
     {
-        const auto keyIndex = static_cast<size_t>(keyCode);
-        return m_State.Keys.at(keyIndex);
-    }
+        const KeyCode Code;
 
-    [[nodiscard]] bool GetKeyDown(KeyCode keyCode) const
-    {
-        const auto keyIndex = static_cast<size_t>(keyCode);
-        return m_State.Keys.at(keyIndex) && !m_PreviousState.Keys.at(keyIndex);
-    }
-
-    [[nodiscard]] bool GetKeyUp(KeyCode keyCode) const
-    {
-        const auto keyIndex = static_cast<size_t>(keyCode);
-        return m_PreviousState.Keys.at(keyIndex) && !m_State.Keys.at(keyIndex);
-    }
-
-    void Update();
-
-    void Reset();
-
-protected:
-    bool OnKeyDown(KeyCode keyCode);
-
-    bool OnKeyUp(KeyCode keyCode);
-
-private:
-    ////////////////////////////////////////////////////////////
-    // STATE ///////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////
-
-    struct State
-    {
-        static constexpr auto MaxKeyCount = static_cast<size_t>(KeyCode::AutoCount);
-        std::array<bool, MaxKeyCount> Keys{};
-
-        void Clear()
-        {
-            std::memset(this, 0, sizeof(State));
-        }
+        KeyDownEvent(KeyCode keyCode)
+            : Code(keyCode)
+        {}
     };
 
-    State m_State{};
-    State m_PreviousState{};
-};
+    ////////////////////////////////////////////////////////////////
+    // KEY UP EVENT ////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    struct KeyUpEvent
+    {
+        const KeyCode Code;
+
+        KeyUpEvent(KeyCode keyCode)
+            : Code(keyCode)
+        {}
+    };
+
+    ////////////////////////////////////////////////////////////////
+    // KEYBOARD ////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    class Keyboard
+    {
+    public:
+        Signal<const KeyDownEvent&> KeyDown{};
+        Signal<const KeyUpEvent&>   KeyUp  {};
+
+        virtual ~Keyboard() = default;
+
+        bool GetKey(KeyCode keyCode) const
+        {
+            const auto keyIndex = static_cast<size_t>(keyCode);
+            return m_State.Keys.at(keyIndex);
+        }
+
+        bool GetKeyDown(KeyCode keyCode) const
+        {
+            const auto keyIndex = static_cast<size_t>(keyCode);
+            return m_State.Keys.at(keyIndex) && !m_PreviousState.Keys.at(keyIndex);
+        }
+
+        bool GetKeyUp(KeyCode keyCode) const
+        {
+            const auto keyIndex = static_cast<size_t>(keyCode);
+            return m_PreviousState.Keys.at(keyIndex) && !m_State.Keys.at(keyIndex);
+        }
+
+        void Update();
+
+        void Reset();
+
+    protected:
+        bool OnKeyDown(KeyCode keyCode);
+
+        bool OnKeyUp(KeyCode keyCode);
+
+    private:
+        ////////////////////////////////////////////////////////////
+        // STATE ///////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////
+
+        struct State
+        {
+            static constexpr auto MaxKeyCount = static_cast<size_t>(KeyCode::AutoCount);
+            std::array<bool, MaxKeyCount> Keys{};
+
+            void Clear()
+            {
+                std::memset(this, 0, sizeof(State));
+            }
+        };
+
+        State m_State{};
+        State m_PreviousState{};
+    };
+
+}

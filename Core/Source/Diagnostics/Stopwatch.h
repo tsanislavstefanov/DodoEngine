@@ -1,24 +1,28 @@
 #pragma once
 
-////////////////////////////////////////////////////////////////
-// STOPWATCH ///////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+namespace Dodo {
 
-class Stopwatch
-{
-public:
-    Stopwatch() = default;
+    ////////////////////////////////////////////////////////////////
+    // STOPWATCH ///////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-    [[nodiscard]] double GetAsMilliseconds() const;
-
-    [[nodiscard]] double GetAsSeconds() const
+    class Stopwatch
     {
-        return GetAsMilliseconds() * 0.001;
-    }
+    public:
+        Stopwatch() = default;
 
-    void Start();
+        [[nodiscard]] double GetAsMilliseconds() const;
 
-    void Reset();
-private:
-    std::chrono::steady_clock::time_point m_StartTime{};
-};
+        [[nodiscard]] double GetAsSeconds() const
+        {
+            return GetAsMilliseconds() * 0.001;
+        }
+
+        void Start();
+
+        void Reset();
+    private:
+        std::chrono::steady_clock::time_point m_StartTime{};
+    };
+
+}

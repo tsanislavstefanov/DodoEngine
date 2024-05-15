@@ -1,17 +1,23 @@
 #pragma once
 
-////////////////////////////////////////////////////////////////
-// RENDER CONTEXT //////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+#include "Memory/Ref.h"
 
-class RenderContext : public RefCounted
-{
-public:
-    virtual void PrepareBuffers() = 0;
+namespace Dodo {
 
-    virtual void Resize(uint32_t width, uint32_t height) = 0;
+    ////////////////////////////////////////////////////////////////
+    // RENDER CONTEXT //////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-    virtual void SwapBuffers() = 0;
+    class RenderContext : public RefCounted
+    {
+    public:
+        virtual void PrepareBuffers() = 0;
 
-    virtual void Dispose() = 0;
-};
+        virtual void Resize(uint32_t width, uint32_t height) = 0;
+
+        virtual void SwapBuffers() = 0;
+
+        virtual void Dispose() = 0;
+    };
+
+}

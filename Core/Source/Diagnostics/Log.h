@@ -1,108 +1,113 @@
 #pragma once
 
-////////////////////////////////////////////////////////////////
-// LOGGER TYPE /////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+namespace Dodo {
 
-enum class LoggerType
-{
-    Console  ,
-    AutoCount,
-    None
-};
+    ////////////////////////////////////////////////////////////////
+    // LOGGER TYPE /////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////
-// LOG LEVEL ///////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-
-enum class LogLevel
-{
-    Debug    ,
-    Info     ,
-    Warning  ,
-    Error    ,
-    Fatal    ,
-    AutoCount,
-    None
-};
-
-////////////////////////////////////////////////////////////////
-// LOGGER //////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-
-class Logger
-{
-public:
-    static std::shared_ptr<Logger> Create(LoggerType type);
-
-    Logger() = default;
-    virtual ~Logger() = default;
-
-    template<typename... Args>
-    void LogDebug(const std::string& format, Args&&... args)
+    enum class LoggerType
     {
-        std::string message = std::vformat(format, std::make_format_args(args...));
-        WriteLog(LogLevel::Debug, message);
-    }
+        Console,
+        AutoCount,
+        None
+    };
 
-    template<typename... Args>
-    void LogInfo(const std::string& format, Args&&... args)
+    ////////////////////////////////////////////////////////////////
+    // LOG LEVEL ///////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    enum class LogLevel
     {
-        std::string message = std::vformat(format, std::make_format_args(args...));
-        WriteLog(LogLevel::Info, message);
-    }
+        Debug,
+        Info,
+        Warning,
+        Error,
+        Fatal,
+        AutoCount,
+        None
+    };
 
-    template<typename... Args>
-    void LogWarning(const std::string& format, Args&&... args)
+    ////////////////////////////////////////////////////////////////
+    // LOGGER //////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    class Logger
     {
-        std::string message = std::vformat(format, std::make_format_args(args...));
-        WriteLog(LogLevel::Warning, message);
-    }
+    public:
+        static std::shared_ptr<Logger> Create(LoggerType type);
 
-    template<typename... Args>
-    void LogError(const std::string& format, Args&&... args)
+        Logger() = default;
+
+        virtual ~Logger() = default;
+
+        template<typename... Args>
+        void LogDebug(const std::string& format, Args&&... args)
+        {
+            std::string message = std::vformat(format, std::make_format_args(args...));
+            WriteLog(LogLevel::Debug, message);
+        }
+
+        template<typename... Args>
+        void LogInfo(const std::string& format, Args&&... args)
+        {
+            std::string message = std::vformat(format, std::make_format_args(args...));
+            WriteLog(LogLevel::Info, message);
+        }
+
+        template<typename... Args>
+        void LogWarning(const std::string& format, Args&&... args)
+        {
+            std::string message = std::vformat(format, std::make_format_args(args...));
+            WriteLog(LogLevel::Warning, message);
+        }
+
+        template<typename... Args>
+        void LogError(const std::string& format, Args&&... args)
+        {
+            std::string message = std::vformat(format, std::make_format_args(args...));
+            WriteLog(LogLevel::Error, message);
+        }
+
+        template<typename... Args>
+        void LogFatal(const std::string& format, Args&&... args)
+        {
+            std::string message = std::vformat(format, std::make_format_args(args...));
+            WriteLog(LogLevel::Fatal, message);
+        }
+
+    protected:
+        virtual void WriteLog(LogLevel level, const std::string& message) = 0;
+    };
+
+    ////////////////////////////////////////////////////////////////
+    // LOG /////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    class Log
     {
-        std::string message = std::vformat(format, std::make_format_args(args...));
-        WriteLog(LogLevel::Error, message);
-    }
+    public:
+        static void Init();
 
-    template<typename... Args>
-    void LogFatal(const std::string& format, Args&&... args)
-    {
-        std::string message = std::vformat(format, std::make_format_args(args...));
-        WriteLog(LogLevel::Fatal, message);
-    }
+        static std::shared_ptr<Logger> GetCoreLogger()
+        {
+            return s_CoreLogger;
+        }
 
-protected:
-    virtual void WriteLog(LogLevel level, const std::string& message) = 0;
-};
+        static void DeInit();
 
-////////////////////////////////////////////////////////////////
-// LOG /////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+    private:
+        static std::shared_ptr<Logger> s_CoreLogger;
+    };
 
-class Log
-{
-public:
-    static void Init();
-
-    static std::shared_ptr<Logger> GetCoreLogger()
-    {
-        return s_CoreLogger;
-    }
-
-    static void DeInit();
-
-private:
-    static std::shared_ptr<Logger> s_CoreLogger;
-};
+}
 
 #ifdef CONFIGURATION_DEBUG
-#   define LOG_CORE_DEBUG(...)   Log::GetCoreLogger()->LogDebug  (__VA_ARGS__)
-#   define LOG_CORE_INFO(...)    Log::GetCoreLogger()->LogInfo   (__VA_ARGS__)
-#   define LOG_CORE_WARNING(...) Log::GetCoreLogger()->LogWarning(__VA_ARGS__)
-#   define LOG_CORE_ERROR(...)   Log::GetCoreLogger()->LogError  (__VA_ARGS__)
-#   define LOG_CORE_FATAL(...)   Log::GetCoreLogger()->LogFatal  (__VA_ARGS__)
+#   define LOG_CORE_DEBUG(...)   Dodo::Log::GetCoreLogger()->LogDebug  (__VA_ARGS__)
+#   define LOG_CORE_INFO(...)    Dodo::Log::GetCoreLogger()->LogInfo   (__VA_ARGS__)
+#   define LOG_CORE_WARNING(...) Dodo::Log::GetCoreLogger()->LogWarning(__VA_ARGS__)
+#   define LOG_CORE_ERROR(...)   Dodo::Log::GetCoreLogger()->LogError  (__VA_ARGS__)
+#   define LOG_CORE_FATAL(...)   Dodo::Log::GetCoreLogger()->LogFatal  (__VA_ARGS__)
 #else
 #   define LOG_CORE_DEBUG(...)
 #   define LOG_CORE_INFO(...)

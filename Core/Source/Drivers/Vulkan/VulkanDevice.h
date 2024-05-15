@@ -3,24 +3,28 @@
 #include "VulkanContext.h"
 #include "Renderer/RenderDevice.h"
 
-////////////////////////////////////////////////////////////////
-// VULKAN DEVICE ///////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+namespace Dodo {
 
-class VulkanDevice : public RenderDevice
-{
-public:
-    VulkanDevice();
+    ////////////////////////////////////////////////////////////////
+    // VULKAN DEVICE ///////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-    // Inherited via [RenderDevice].
-    void BeginFrame() override;
+    class VulkanDevice : public RenderDevice
+    {
+    public:
+        VulkanDevice();
 
-    void Resize(uint32_t width, uint32_t height) override;
+        // Inherited via [RenderDevice].
+        void BeginFrame() override;
 
-    void EndFrame() override;
+        void Resize(uint32_t width, uint32_t height) override;
 
-    void Dispose() override;
+        void EndFrame() override;
 
-private:
-    std::unique_ptr<VulkanContext> m_Context = nullptr;
-};
+        void Dispose() override;
+
+    private:
+        std::unique_ptr<VulkanContext> m_Context = nullptr;
+    };
+
+}

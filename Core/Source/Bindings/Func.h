@@ -3,81 +3,85 @@
 #include <type_traits>
 #include <utility>
 
-////////////////////////////////////////////////////////////////
-// FUNC ////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+namespace Dodo {
 
-template<typename>
-class Func {};
+    ////////////////////////////////////////////////////////////////
+    // FUNC ////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-template<typename Result, typename... Args>
-class Func<Result(Args...)>
-{
-public:
-    Func() = default;
+    template<typename>
+    class Func {};
 
-    operator bool() const
+    template<typename Result, typename... Args>
+    class Func<Result(Args...)>
     {
-        return m_Invocation.Callback != nullptr;
-    }
+    public:
+        Func() = default;
 
-    bool operator==(const Func& other) const
-    {
-        return m_Invocation.Data == other.m_Invocation.Data;
-    }
+        operator bool() const
+        {
+            return m_Invocation.Callback != nullptr;
+        }
 
-    bool operator!=(const Func& other) const
-    {
-        return !((*this) == other);
-    }
+        bool operator==(const Func& other) const
+        {
+            return m_Invocation.Data == other.m_Invocation.Data;
+        }
 
-    Result operator()(Args... args) const
-    {
-        return Invoke(std::forward<Args>(args)...);
-    }
+        bool operator!=(const Func& other) const
+        {
+            return !((*this) == other);
+        }
 
-    template<typename Lambda>
-    void Connect(Lambda&& lambda)
-    {
-        new (&m_Invocation.Data) Lambda(std::forward<Lambda>(lambda));
-        m_Invocation.Callback = [](const Storage& data, Args&&... args) -> Result {
-            auto lambda = reinterpret_cast<const Lambda*>(&data);
-            return (*lambda)(std::forward<Args>(args)...);
+        Result operator()(Args... args) const
+        {
+            return Invoke(std::forward<Args>(args)...);
+        }
+
+        template<typename Lambda>
+        void Connect(Lambda&& lambda)
+        {
+            new (&m_Invocation.Data) Lambda(std::forward<Lambda>(lambda));
+            m_Invocation.Callback = [](const Storage& data, Args&&... args) -> Result {
+                auto lambda = reinterpret_cast<const Lambda*>(&data);
+                return (*lambda)(std::forward<Args>(args)...);
+            };
+        }
+
+        Result Invoke(Args... args) const
+        {
+            return m_Invocation.Callback(m_Invocation.Data, std::forward<Args>(args)...);
+        }
+
+        void Disconnect()
+        {
+            m_Invocation = {};
+        }
+
+    private:
+        ////////////////////////////////////////////////////////////
+        // STORAGE /////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////
+
+        using Storage = std::aligned_storage<sizeof(void*), alignof(void*)>;
+
+        ////////////////////////////////////////////////////////////
+        // INVOCATION //////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////
+
+        struct Invocation
+        {
+            Storage Data{};
+
+            ////////////////////////////////////////////////////////
+            // STUB ////////////////////////////////////////////////
+            ////////////////////////////////////////////////////////
+
+            using Stub = Result(*)(const Storage&, Args&&...);
+            Stub Callback = nullptr;
         };
-    }
 
-    Result Invoke(Args... args) const
-    {
-        return m_Invocation.Callback(m_Invocation.Data, std::forward<Args>(args)...);
-    }
-
-    void Disconnect()
-    {
-        m_Invocation = {};
-    }
-
-private:
-    ////////////////////////////////////////////////////////////
-    // STORAGE /////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////
-
-    using Storage = std::aligned_storage<sizeof(void*), alignof(void*)>;
-
-    ////////////////////////////////////////////////////////////
-    // INVOCATION //////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////
-
-    struct Invocation
-    {
-        Storage Data{};
-
-        ////////////////////////////////////////////////////////
-        // STUB ////////////////////////////////////////////////
-        ////////////////////////////////////////////////////////
-
-        using Stub = Result(*)(const Storage&, Args&&...);
-        Stub Callback = nullptr;
+        Invocation m_Invocation{};
     };
 
-    Invocation m_Invocation{};
-};
+}

@@ -3,39 +3,42 @@
 #include "KeyCode.h"
 #include "MouseCode.h"
 
-////////////////////////////////////////////////////////////////
-// FORWARD DECLARATIONS ////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+namespace Dodo {
 
-class Keyboard;
-class Mouse;
+    ////////////////////////////////////////////////////////////////
+    // FORWARD DECLARATIONS ////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////
-// INPUT ///////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+    class Keyboard;
+    class Mouse;
 
-class Input
-{
-public:
-    static bool  GetKey(KeyCode keyCode);
-                  
-    static bool  GetKeyDown(KeyCode keyCode);
-                  
-    static bool  GetKeyUp(KeyCode keyCode);
-                 
-    static float GetMouseWheelDelta();
-                 
-    static bool  GetMouseButton(MouseCode mouseCode);
-                  
-    static bool  GetMouseButtonDown(MouseCode mouseCode);
-                  
-    static bool  GetMouseButtonUp(MouseCode mouseCode);
+    ////////////////////////////////////////////////////////////////
+    // INPUT ///////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-    static void  Update();
+    class Input
+    {
+    public:
+        static Keyboard* Keyboard;
+        static Mouse*    Mouse;
 
-    virtual ~Input() = default;
+        static bool  GetKey(KeyCode keyCode);
+                    
+        static bool  GetKeyDown(KeyCode keyCode);
+                    
+        static bool  GetKeyUp(KeyCode keyCode);
+                    
+        static float GetMouseWheelDelta();
+                    
+        static bool  GetMouseButton(MouseCode mouseCode);
+                    
+        static bool  GetMouseButtonDown(MouseCode mouseCode);
+                    
+        static bool  GetMouseButtonUp(MouseCode mouseCode);
 
-protected:
-    static Keyboard* s_Keyboard;
-    static Mouse* s_Mouse;
-};
+        static void  Update();
+
+        virtual ~Input() = default;
+    };
+
+}

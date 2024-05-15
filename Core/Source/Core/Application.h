@@ -1,115 +1,122 @@
 #pragma once
 
+#include "RenderThread.h"
 #include "Window.h"
 #include "Diagnostics/Stopwatch.h"
 #include "Renderer/RenderSettings.h"
 
-////////////////////////////////////////////////////////////////
-// COMMAND LINE ARGS ///////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+namespace Dodo {
 
-class CommandLineArgs
-{
-public:
-    CommandLineArgs() = default;
+    ////////////////////////////////////////////////////////////////
+    // COMMAND LINE ARGS ///////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-    CommandLineArgs(int count, char** values)
-        : m_Count (count )
-        , m_Values(values)
-    {}
-
-    const char* operator[](size_t index) const
+    class CommandLineArgs
     {
-        ASSERT((index < m_Count) && (index >= 0), "Index out of range!");
-        return m_Values[index];
-    }
+    public:
+        CommandLineArgs() = default;
 
-    [[nodiscard]] int GetCount() const
+        CommandLineArgs(int count, char** values)
+            : m_Count (count )
+            , m_Values(values)
+        {}
+
+        const char* operator[](size_t index) const
+        {
+            ASSERT((index < m_Count) && (index >= 0), "Index out of range!");
+            return m_Values[index];
+        }
+
+        int GetCount() const
+        {
+            return m_Count;
+        }
+
+        char** GetValues() const
+        {
+            return m_Values;
+        }
+
+    private:
+        int    m_Count  = 0;
+        char** m_Values = nullptr;
+    };
+
+    ////////////////////////////////////////////////////////////////
+    // APPLICATION SPECS ///////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    struct ApplicationSpecs
     {
-        return m_Count;
-    }
+        CommandLineArgs  CmdLineArgs{};
+        uint32_t         Width         = 0;
+        uint32_t         Height        = 0;
+        std::string      Title{};
+        bool             ShowFrameRate = false;
+        bool             EnableImGui   = false;
+        ThreadPolicy     ThreadPolicy  = ThreadPolicy::None;
+        RenderSettings   RenderSettings{};
+    };
 
-    [[nodiscard]] char** GetValues() const
+    ////////////////////////////////////////////////////////////////
+    // APPLICATION /////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    class Application
     {
-        return m_Values;
-    }
+    public:
+        static Application& GetCurrent()
+        {
+            return *s_App;
+        }
 
-private:
-    int    m_Count  = 0;
-    char** m_Values = nullptr;
-};
+        explicit Application(ApplicationSpecs specs);
 
-////////////////////////////////////////////////////////////////
-// APPLICATION SPECS ///////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+        virtual ~Application() = default;
 
-struct ApplicationSpecs
-{
-    CommandLineArgs  CmdLineArgs{};
-    uint32_t         Width         = 0;
-    uint32_t         Height        = 0;
-    std::string      Title{};
-    bool             ShowFrameRate = false;
-    bool             EnableImGui   = false;
-    RenderSettings   RenderSettings{};
-};
+        const ApplicationSpecs& GetSpecs() const
+        {
+            return m_Specs;
+        }
 
-////////////////////////////////////////////////////////////////
-// APPLICATION /////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
+        Ref<Window> GetWindow()
+        {
+            return m_Window;
+        }
 
-class Application
-{
-public:
-    static Application& GetCurrent()
-    {
-        return *s_App;
-    }
+        Ref<Window> GetWindow() const
+        {
+            return m_Window;
+        }
 
-    explicit Application(ApplicationSpecs specs);
+        void Run();
 
-    virtual ~Application() = default;
+    protected:
+        virtual void OnInit() {}
 
-    [[nodiscard]] const ApplicationSpecs& GetSpecs() const
-    {
-        return m_Specs;
-    }
+        virtual void OnUpdate() {}
 
-    Ref<Window> GetWindow()
-    {
-        return m_Window;
-    }
+        virtual void OnBeginRender() {}
 
-    [[nodiscard]] Ref<Window> GetWindow() const
-    {
-        return m_Window;
-    }
+        virtual void OnRender() {}
 
-    void Run();
+        virtual void OnEndRender() {}
 
-protected:
-    virtual void OnInit() {}
+        virtual void OnDispose() {}
 
-    virtual void OnUpdate() {}
+    private:
+        static Application* s_App;
 
-    virtual void OnBeginRender() {}
+        void Init();
 
-    virtual void OnRender() {}
+        void Dispose();
 
-    virtual void OnEndRender() {}
+        ApplicationSpecs m_Specs;
+        RenderThread     m_RenderThread;
+        Ref<Window>      m_Window    = nullptr;
+        bool             m_IsRunning = true;
+        Stopwatch        m_FrameRateWatch{};
+        uint32_t         m_FrameRate = 0;
+    };
 
-    virtual void OnDispose() {}
-
-private:
-    static Application* s_App;
-
-    void Init();
-
-    void Dispose();
-
-    ApplicationSpecs m_Specs;
-    Ref<Window>      m_Window    = nullptr;
-    bool             m_IsRunning = true;
-    Stopwatch        m_FrameRateWatch{};
-    uint32_t         m_FrameRate = 0;
-};
+}

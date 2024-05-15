@@ -5,10 +5,10 @@
 // SANDBOX /////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
-class Sandbox : public Application
+class Sandbox : public Dodo::Application
 {
 public:
-    Sandbox(const ApplicationSpecs& specs)
+    Sandbox(const Dodo::ApplicationSpecs& specs)
         : Application(specs)
     {}
 
@@ -21,20 +21,21 @@ public:
     }
 };
 
-Application* CreateApplication(const CommandLineArgs& cmdLineArgs)
+Dodo::Application* CreateApplication(const Dodo::CommandLineArgs& cmdLineArgs)
 {
-    RenderSettings renderSettings{};
-    renderSettings.RenderDeviceType = RenderDeviceType::Vulkan;
-    renderSettings.VSyncMode        = VSyncMode::Enable;
+    Dodo::RenderSettings renderSettings{};
+    renderSettings.RenderDeviceType = Dodo::RenderDeviceType::Vulkan;
+    renderSettings.VSyncMode        = Dodo::VSyncMode::Enable;
     renderSettings.BackBufferCount  = 2;
 
-    ApplicationSpecs appSpecs{};
+    Dodo::ApplicationSpecs appSpecs{};
     appSpecs.CmdLineArgs    = cmdLineArgs;
     appSpecs.Width          = 1280;
     appSpecs.Height         = 720;
     appSpecs.Title          = "Sandbox";
     appSpecs.ShowFrameRate  = true;
-    appSpecs.EnableImGui    = false;
+    appSpecs.EnableImGui    = true;
+    appSpecs.ThreadPolicy   = Dodo::ThreadPolicy::MultiThreaded;
     appSpecs.RenderSettings = renderSettings;
     return new Sandbox(appSpecs);
 }

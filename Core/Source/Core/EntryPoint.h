@@ -3,16 +3,16 @@
 #include "Application.h"
 #include "Diagnostics/Log.h"
 
-extern Application* CreateApplication(const CommandLineArgs& cmdLineArgs);
+extern Dodo::Application* CreateApplication(const Dodo::CommandLineArgs& cmdLineArgs);
 
 int main(int argc, char** argv)
 {
-    Log::Init();
+    Dodo::Log::Init();
 
-    Application* application = CreateApplication({argc, argv });
+    Dodo::Application* application = CreateApplication({argc, argv });
     application->Run();
     delete application;
 
-    Log::DeInit();
+    Dodo::Log::DeInit();
     return 0;
 }
