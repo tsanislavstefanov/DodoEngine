@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Renderer.h"
 #include "RenderDevice.h"
+#include "Core/RenderThread.h"
 #include "Drivers/Vulkan/VulkanDevice.h"
 
 namespace Dodo {
@@ -16,9 +17,10 @@ namespace Dodo {
             switch (deviceType)
             {
                 case RenderDeviceType::Vulkan: return std::make_unique<VulkanDevice>();
+                default                      : ASSERT(false, "RenderDevice type not supported!");
             }
 
-            ASSERT(false, "RenderDevice type not supported!");
+            return nullptr;
         }
 
     }
@@ -52,6 +54,21 @@ namespace Dodo {
     void Renderer::Init()
     {
         s_Data.Device = Utils::CreateRenderDevice(s_Data.Settings.RenderDeviceType);
+    }
+
+    void Renderer::RenderThreadProc(RenderThread* renderThread)
+    {
+        while (renderThread->IsRunning())
+        {
+            WaitAndRender(renderThread);
+        }
+    }
+
+    void Renderer::WaitAndRender(RenderThread* renderThread)
+    {
+        // Execute command buffer.
+        // Set render thread to idle.
+        // Measure performances?
     }
 
     void Renderer::BeginFrame()

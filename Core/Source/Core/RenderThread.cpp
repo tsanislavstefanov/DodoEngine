@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "RenderThread.h"
+#include "Renderer/Renderer.h"
 
 namespace Dodo {
 
@@ -13,7 +14,7 @@ namespace Dodo {
         m_IsRunning = true;
         if (m_ThreadPolicy == ThreadPolicy::MultiThreaded)
         {
-
+            m_Thread->Dispatch(Renderer::RenderThreadProc, this);
         }
     }
 
