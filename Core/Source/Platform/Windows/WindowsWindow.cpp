@@ -43,15 +43,15 @@ namespace Dodo {
 
         const std::wstring title(m_Data.Title.begin(), m_Data.Title.end());
         m_Handle = CreateWindowExW(0,                                              // Optional styles.
-                                className,                                      // Class name.
-                                title.c_str(),                                  // Title.
-                                WS_OVERLAPPEDWINDOW,                            // Style.
-                                CW_USEDEFAULT, CW_USEDEFAULT,                   // Position.
-                                rect.right - rect.left, rect.bottom - rect.top, // Size.
-                                nullptr,                                        // Parent.
-                                nullptr,                                        // Menu.
-                                m_Module,                                       // Module.
-                                nullptr);                                       // Additional application data.
+                                   className,                                      // Class name.
+                                   title.c_str(),                                  // Title.
+                                   WS_OVERLAPPEDWINDOW,                            // Style.
+                                   CW_USEDEFAULT, CW_USEDEFAULT,                   // Position.
+                                   rect.right - rect.left, rect.bottom - rect.top, // Size.
+                                   nullptr,                                        // Parent.
+                                   nullptr,                                        // Menu.
+                                   m_Module,                                       // Module.
+                                   nullptr);                                       // Additional application data.
 
         SetWindowLongPtrW(m_Handle, GWLP_USERDATA, reinterpret_cast<LPARAM>(&m_Data));
         ShowWindow(m_Handle, SW_SHOWDEFAULT);

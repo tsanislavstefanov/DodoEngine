@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <deque>
 #include <iostream>
 #include <format>
 #include <limits>

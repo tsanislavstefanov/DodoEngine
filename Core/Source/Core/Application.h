@@ -48,14 +48,25 @@ namespace Dodo {
 
     struct ApplicationSpecs
     {
-        CommandLineArgs  CmdLineArgs{};
-        uint32_t         Width         = 0;
-        uint32_t         Height        = 0;
-        std::string      Title{};
-        bool             ShowFrameRate = false;
-        bool             EnableImGui   = false;
-        ThreadPolicy     ThreadPolicy  = ThreadPolicy::None;
-        RenderSettings   RenderSettings{};
+        CommandLineArgs    CmdLineArgs{};
+        uint32_t           Width              = 0;
+        uint32_t           Height             = 0;
+        std::string        Title{};
+        bool               ShowFrameRate      = false;
+        bool               EnableImGui        = false;
+        RenderThreadPolicy RenderThreadPolicy = RenderThreadPolicy::None;
+        RenderSettings     RenderSettings{};
+    };
+
+    ////////////////////////////////////////////////////////////////
+    // PERFORMANCE STATS ///////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    struct PerformanceStats
+    {
+        double MainThreadWaitTime   = 0.0;
+        double RenderThreadWaitTime = 0.0;
+        double RenderThreadWorkTime = 0.0;
     };
 
     ////////////////////////////////////////////////////////////////
@@ -70,7 +81,7 @@ namespace Dodo {
             return *s_App;
         }
 
-        explicit Application(ApplicationSpecs specs);
+        Application(ApplicationSpecs specs);
 
         virtual ~Application() = default;
 
@@ -87,6 +98,16 @@ namespace Dodo {
         Ref<Window> GetWindow() const
         {
             return m_Window;
+        }
+
+        PerformanceStats& GetStats()
+        {
+            return m_PerformanceStats;
+        }
+
+        const PerformanceStats& GetStats() const
+        {
+            return m_PerformanceStats;
         }
 
         void Run();
@@ -111,12 +132,13 @@ namespace Dodo {
 
         void Dispose();
 
-        ApplicationSpecs m_Specs;
-        RenderThread     m_RenderThread;
-        Ref<Window>      m_Window    = nullptr;
-        bool             m_IsRunning = true;
-        Stopwatch        m_FrameRateWatch{};
-        uint32_t         m_FrameRate = 0;
+        ApplicationSpecs  m_Specs;
+        Ref<RenderThread> m_RenderThread = nullptr;
+        Ref<Window>       m_Window       = nullptr;
+        bool              m_IsRunning    = true;
+        Stopwatch         m_FrameRateWatch{};
+        uint32_t          m_FrameRate    = 0;
+        PerformanceStats  m_PerformanceStats{};
     };
 
 }

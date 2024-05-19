@@ -17,11 +17,11 @@ namespace Dodo {
         {
             std::string dateTime  = Platform::GetDatetimeAsString();
             const auto  sinkIndex = static_cast<size_t>(level);
-            std::cout << std::format("{0}: {1}{2}{3}\n",
+            std::cout << std::format("{0}: {1}{2}{3}",
                                      dateTime,
                                      m_Sink.Colors.at(sinkIndex),
                                      message,
-                                     m_Sink.Off);
+                                     m_Sink.Off) << std::endl;
         }
 
     private:

@@ -9,11 +9,11 @@ namespace Dodo {
     class Stopwatch
     {
     public:
-        Stopwatch() = default;
+        Stopwatch();
 
-        [[nodiscard]] double GetAsMilliseconds() const;
+        double GetAsMilliseconds() const;
 
-        [[nodiscard]] double GetAsSeconds() const
+        double GetAsSeconds() const
         {
             return GetAsMilliseconds() * 0.001;
         }

@@ -7,6 +7,11 @@ namespace Dodo {
     // STOPWATCH ///////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
+    Stopwatch::Stopwatch()
+    {
+        Start();
+    }
+
     double Stopwatch::GetAsMilliseconds() const
     {
         auto stopTime = std::chrono::steady_clock::now();

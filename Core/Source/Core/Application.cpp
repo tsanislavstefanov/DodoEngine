@@ -12,8 +12,9 @@ namespace Dodo {
     Application* Application::s_App = nullptr;
 
     Application::Application(ApplicationSpecs specs)
-        : m_Specs(std::move(specs))
-        , m_RenderThread(m_Specs.ThreadPolicy)
+        :
+        m_Specs(std::move(specs)),
+        m_RenderThread(RenderThread::Create(m_Specs.RenderThreadPolicy))
     {
         ASSERT(!s_App, "Application: Instance already exists!");
         s_App = this;
@@ -25,7 +26,18 @@ namespace Dodo {
 
         while (m_IsRunning)
         {
+            // Wait render thread to render frame.
+            {
+                Stopwatch stopwatch{};
+                m_RenderThread->BlockUntilRenderComplete();
+                m_PerformanceStats.MainThreadWaitTime = stopwatch.GetAsMilliseconds();
+            }
+
             m_Window->PollEvents();
+
+            m_RenderThread->NextFrame();
+            // Render previous frame.
+            m_RenderThread->Kick();
 
             // Don't update the application when not focused.
             if (!m_Window->HasFocus())
@@ -53,6 +65,9 @@ namespace Dodo {
                 if (m_Specs.ShowFrameRate)
                 {
                     m_Window->SetTitle(std::format("{0} [Frame Rate: {1}]", m_Specs.Title, m_FrameRate));
+                    LOG_CORE_WARNING("MainThread wait time: {}.", m_PerformanceStats.MainThreadWaitTime);
+                    LOG_CORE_WARNING("RenderThread wait time: {}.", m_PerformanceStats.RenderThreadWaitTime);
+                    LOG_CORE_WARNING("RenderThread work time: {}.", m_PerformanceStats.RenderThreadWorkTime);
                 }
 
                 m_FrameRateWatch.Reset();
@@ -65,6 +80,8 @@ namespace Dodo {
 
     void Application::Init()
     {
+        m_RenderThread->Run();
+
         WindowSpecs windowSpecs{};
         windowSpecs.Width  = m_Specs.Width;
         windowSpecs.Height = m_Specs.Height;
@@ -76,6 +93,9 @@ namespace Dodo {
         Renderer::SetSettings(m_Specs.RenderSettings);
         Renderer::Init();
 
+        // Render one frame.
+        m_RenderThread->Pump();
+
         OnInit();
 
         m_FrameRateWatch.Start();
@@ -83,6 +103,8 @@ namespace Dodo {
 
     void Application::Dispose()
     {
+        m_RenderThread->Kill();
+
         Renderer::Dispose();
         m_Window->Dispose();
 
