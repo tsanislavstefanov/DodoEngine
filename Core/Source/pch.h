@@ -15,11 +15,13 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <condition_variable>
 #include <deque>
 #include <iostream>
 #include <format>
 #include <limits>
 #include <map>
+#include <mutex>
 #include <optional>
 #include <set>
 #include <string>
@@ -39,7 +41,7 @@
 // WINDOWS INCLUDES ////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
-#ifdef PLATFORM_WINDOWS
+#ifdef DODO_WINDOWS
 #   ifndef NOMINMAX
 #       define NOMINMAX
 #   endif

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Memory/Ref.h"
-
 namespace Dodo {
 
     ////////////////////////////////////////////////////////////////
@@ -11,13 +9,11 @@ namespace Dodo {
     class RenderContext : public RefCounted
     {
     public:
-        virtual void PrepareBuffers() = 0;
+        static Ref<RenderContext> Create();
 
-        virtual void Resize(uint32_t width, uint32_t height) = 0;
+        virtual ~RenderContext() = default;
 
-        virtual void SwapBuffers() = 0;
-
-        virtual void Dispose() = 0;
+        virtual void Destroy() = 0;
     };
 
 }

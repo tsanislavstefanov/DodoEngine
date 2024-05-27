@@ -18,6 +18,12 @@ namespace Dodo {
     public:
         Func() = default;
 
+        template<typename Lambda>
+        Func(Lambda&& lambda)
+        {
+            Connect(std::forward<Lambda>(lambda));
+        }
+
         operator bool() const
         {
             return m_Invocation.Callback != nullptr;
@@ -42,7 +48,8 @@ namespace Dodo {
         void Connect(Lambda&& lambda)
         {
             new (&m_Invocation.Data) Lambda(std::forward<Lambda>(lambda));
-            m_Invocation.Callback = [](const Storage& data, Args&&... args) -> Result {
+            m_Invocation.Callback = [](const Storage& data, Args&&... args) -> Result
+            {
                 auto lambda = reinterpret_cast<const Lambda*>(&data);
                 return (*lambda)(std::forward<Args>(args)...);
             };

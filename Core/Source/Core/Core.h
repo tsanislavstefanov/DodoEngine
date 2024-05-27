@@ -5,32 +5,24 @@
 ////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-#	ifndef PLATFORM_WINDOWS
-#		define PLATFORM_WINDOWS
-#	endif
+#   define DODO_WINDOWS
 #endif
 
 ////////////////////////////////////////////////////////////////
 // CONFIGURATION ///////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
-#ifndef CONFIGURATION_DEBUG
-#   ifdef PLATFORM_WINDOWS
-#	    ifdef _DEBUG
-#			define CONFIGURATION_DEBUG
-#	    endif
-#   endif
+#ifdef _DEBUG
+#   define DODO_DEBUG
 #endif
 
 ////////////////////////////////////////////////////////////////
 // DEBUG BREAK /////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
-#ifdef CONFIGURATION_DEBUG
-#   ifndef DEBUG_BREAK
-#       ifdef PLATFORM_WINDOWS
-#           define DEBUG_BREAK() __debugbreak()
-#       endif
+#ifdef DODO_DEBUG
+#   ifdef DODO_WINDOWS
+#       define DODO_DEBUG_BREAK() __debugbreak()
 #   endif
 #endif
 
@@ -38,25 +30,11 @@
 // ASSERTION ///////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
-#ifdef CONFIGURATION_DEBUG
-#	ifndef ENABLE_ASSERTION
-#		define ENABLE_ASSERTION
-#	endif
-#   ifndef ASSERT
-#       ifdef ENABLE_ASSERTION
-#           include "Diagnostics/Log.h"
-#           define ASSERT(CONDITION, ...) if (!(CONDITION)) { LOG_CORE_ERROR(__VA_ARGS__); DEBUG_BREAK(); }
-#           define VERIFY(CONDITION) if (!(CONDITION)) { DEBUG_BREAK(); }
-#       else
-#           define ASSERT()
-#       endif
-#   endif
-#endif
-
-////////////////////////////////////////////////////////////////
-// OTHER UTILS /////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-
-#ifndef DODO_MAYBE_UNUSED
-#   define DODO_MAYBE_UNUSED(X) static_cast<void>(X)
+#ifdef DODO_DEBUG
+#   include "Diagnostics/Log.h"
+#   define DODO_ASSERT(CONDITION, ...) if (!(CONDITION)) { LOG_CORE_ERROR(__VA_ARGS__); DODO_DEBUG_BREAK(); }
+#   define DODO_VERIFY(CONDITION) if (!(CONDITION)) { DODO_DEBUG_BREAK(); }
+#else
+#   define DODO_ASSERT(...)
+#   define DODO_VERIFY(...)
 #endif

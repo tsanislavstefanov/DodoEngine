@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "Application.h"
-#include "Input/Input.h"
 #include "Renderer/Renderer.h"
 
 namespace Dodo {
@@ -12,32 +11,32 @@ namespace Dodo {
     Application* Application::s_App = nullptr;
 
     Application::Application(ApplicationSpecs specs)
-        :
-        m_Specs(std::move(specs)),
-        m_RenderThread(RenderThread::Create(m_Specs.RenderThreadPolicy))
+        : m_Specs(std::move(specs))
+        , m_RenderThread(specs.ThreadingPolicy)
     {
-        ASSERT(!s_App, "Application: Instance already exists!");
+        DODO_ASSERT(!s_App, "Application instance already exists!");
         s_App = this;
     }
 
     void Application::Run()
     {
         Init();
-
         while (m_IsRunning)
         {
-            // Wait render thread to render frame.
+            // Wait for RenderThread to finish frame.
             {
-                Stopwatch stopwatch{};
-                m_RenderThread->BlockUntilRenderComplete();
-                m_PerformanceStats.MainThreadWaitTime = stopwatch.GetAsMilliseconds();
+                Stopwatch waitStopwatch{};
+                m_RenderThread.BlockUntilRenderComplete();
+                m_PerformanceStats.MainThreadWaitTime = waitStopwatch.GetAsMilliseconds();
             }
 
-            m_Window->PollEvents();
+            Stopwatch stopwatch{};
+            stopwatch.Start();
 
-            m_RenderThread->NextFrame();
-            // Render previous frame.
-            m_RenderThread->Kick();
+            m_Window->ProcessEvents();
+
+            // Render previous frame and prepare new.
+            m_RenderThread.NextFrame();
 
             // Don't update the application when not focused.
             if (!m_Window->HasFocus())
@@ -45,71 +44,91 @@ namespace Dodo {
                 continue;
             }
 
-            // Update client.
-            OnUpdate();
-
             // Render frame.
-            Renderer::BeginFrame();
-            OnBeginRender();
-            OnRender();
-            OnEndRender();
-            Renderer::EndFrame();
+            Renderer::Schedule([this]()
+            {
+                m_Window->GetSwapchain()->BeginFrame();
+            });
 
-            // Prepare input devices for next frame.
-            Input::Update();
+            Renderer::Schedule([this]()
+            {
+                m_Window->GetSwapchain()->Present();
+            });
 
             // Accumulate frame rate.
-            m_FrameRate++;
-            if (m_FrameRateWatch.GetAsSeconds() >= 1.0)
+            m_PerformanceStats.FrameRate++;
+            if (stopwatch.GetAsSeconds() >= 1.0)
             {
                 if (m_Specs.ShowFrameRate)
                 {
-                    m_Window->SetTitle(std::format("{0} [Frame Rate: {1}]", m_Specs.Title, m_FrameRate));
-                    LOG_CORE_WARNING("MainThread wait time: {}.", m_PerformanceStats.MainThreadWaitTime);
-                    LOG_CORE_WARNING("RenderThread wait time: {}.", m_PerformanceStats.RenderThreadWaitTime);
-                    LOG_CORE_WARNING("RenderThread work time: {}.", m_PerformanceStats.RenderThreadWorkTime);
+                    m_Window->SetTitle(std::format("{0} [Frame Rate: {1}]", m_Specs.Title, m_PerformanceStats.FrameRate));
                 }
 
-                m_FrameRateWatch.Reset();
-                m_FrameRate = 0;
+                m_PerformanceStats.FrameRate = 0;
             }
         }
 
-        Dispose();
+        Close();
     }
 
     void Application::Init()
     {
-        m_RenderThread->Run();
+        Renderer::SetSettings(m_Specs.RenderSettings);
 
+        // Create window & set event callback.
         WindowSpecs windowSpecs{};
         windowSpecs.Width  = m_Specs.Width;
         windowSpecs.Height = m_Specs.Height;
         windowSpecs.Title  = m_Specs.Title;
         m_Window = Window::Create(windowSpecs);
-        m_Window->Resize.Connect([](const WindowResizeEvent& e) { Renderer::Resize(e.Width, e.Height); });
-        m_Window->Close .Connect([this]() { m_IsRunning = false; });
+        m_Window->SetEventCallback([this](Event& e) { OnEvent(e); });
 
-        Renderer::SetSettings(m_Specs.RenderSettings);
         Renderer::Init();
 
+        m_RenderThread.Run();
+
         // Render one frame.
-        m_RenderThread->Pump();
-
-        OnInit();
-
-        m_FrameRateWatch.Start();
+        m_RenderThread.Pump();
     }
 
-    void Application::Dispose()
+    void Application::Close()
     {
-        m_RenderThread->Kill();
+        // Wait for the RenderThread, then destroy the Window.
+        m_RenderThread.Stop();
 
-        Renderer::Dispose();
-        m_Window->Dispose();
+        m_Window->SetEventCallback([](Event&) {});
+        m_Window->Destroy();
 
-        // Dispose client.
-        OnDispose();
+        Renderer::Shutdown();
+    }
+
+    void Application::OnEvent(Event& e)
+    {
+        EventDispatcher dispatcher(e);
+        dispatcher.Dispatch<WindowResizeEvent>([this](WindowResizeEvent& e) { return OnWindowResized(e); });
+        dispatcher.Dispatch<WindowMinimizeEvent>([this](WindowMinimizeEvent& e) { return OnWindowMinimized(e); });
+        dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent& e) { return OnWindowClosed(e); });
+    }
+
+    bool Application::OnWindowResized(WindowResizeEvent& e)
+    {
+        Renderer::Schedule([this, width = e.Width, height = e.Height]()
+        {
+            m_Window->GetSwapchain()->OnResize(width, height);
+        });
+        return false;
+    }
+
+    bool Application::OnWindowMinimized(WindowMinimizeEvent &e)
+    {
+        m_IsMinimized = e.Iconify;
+        return false;
+    }
+
+    bool Application::OnWindowClosed(WindowCloseEvent &e)
+    {
+        m_IsRunning = false;
+        return false;
     }
 
 }

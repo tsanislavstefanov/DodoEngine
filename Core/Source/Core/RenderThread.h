@@ -1,20 +1,8 @@
 #pragma once
 
-#include "Thread.h"
+#include "ThreadingPolicy.h"
 
 namespace Dodo {
-
-    ////////////////////////////////////////////////////////////////
-    // RENDER THREAD POLICY ////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    enum class RenderThreadPolicy
-    {
-        SingleThreaded,
-        MultiThreaded ,
-        AutoCount     ,
-        None
-    };
 
     ////////////////////////////////////////////////////////////////
     // RENDER THREAD STATE /////////////////////////////////////////
@@ -23,8 +11,8 @@ namespace Dodo {
     enum class RenderThreadState
     {
         Idle     ,
-        Busy     ,
         Kick     ,
+        Busy     ,
         AutoCount,
         None
     };
@@ -33,42 +21,35 @@ namespace Dodo {
     // RENDER THREAD ///////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    class RenderThread : public RefCounted
+    class RenderThread
     {
     public:
-        static Ref<RenderThread> Create(RenderThreadPolicy policy);
-
-        RenderThread(RenderThreadPolicy policy);
+        RenderThread(ThreadingPolicy threadingPolicy)
+            : m_ThreadingPolicy(threadingPolicy)
+        {}
 
         bool IsRunning() const
         {
             return m_IsRunning;
         }
 
-        void Run();
-
+        void Run ();
         void Pump();
-
-        void BlockUntilRenderComplete();
-
         void NextFrame();
-
         void Kick();
-
-        void Kill();
-
-        virtual void Wait(RenderThreadState state) = 0;
-
-        virtual void Update(RenderThreadState state) = 0;
-
-        virtual void WaitAndUpdate(RenderThreadState waitForState, RenderThreadState newState) = 0;
-
-    protected:
-        RenderThreadPolicy m_ThreadPolicy = RenderThreadPolicy::None;
-        RenderThreadState  m_State  = RenderThreadState::None;
+        void BlockUntilRenderComplete();
+        void Wait(RenderThreadState state);
+        void Update(RenderThreadState state);
+        void WaitAndUpdate(RenderThreadState waitForState, RenderThreadState newState);
+        void Stop();
 
     private:
-        bool         m_IsRunning    = false;
-        Ref<Thread>  m_Thread       = nullptr;
+        ThreadingPolicy m_ThreadingPolicy = ThreadingPolicy::None;
+        RenderThreadState m_State = RenderThreadState::None;
+        bool m_IsRunning = false;
+        std::thread m_Thread{};
+        std::mutex  m_Mutex {};
+        std::condition_variable m_ConditionVar{};
     };
+
 }

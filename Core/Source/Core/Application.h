@@ -2,7 +2,6 @@
 
 #include "RenderThread.h"
 #include "Window.h"
-#include "Diagnostics/Stopwatch.h"
 #include "Renderer/RenderSettings.h"
 
 namespace Dodo {
@@ -11,35 +10,16 @@ namespace Dodo {
     // COMMAND LINE ARGS ///////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    class CommandLineArgs
+    struct CommandLineArgs
     {
-    public:
-        CommandLineArgs() = default;
-
-        CommandLineArgs(int count, char** values)
-            : m_Count (count )
-            , m_Values(values)
-        {}
+        int    Count = 0;
+        char** Args  = nullptr;
 
         const char* operator[](size_t index) const
         {
-            ASSERT((index < m_Count) && (index >= 0), "Index out of range!");
-            return m_Values[index];
+            DODO_ASSERT(index < Count && index >= 0, "CommandLineArgs index out of range!");
+            return Args[index];
         }
-
-        int GetCount() const
-        {
-            return m_Count;
-        }
-
-        char** GetValues() const
-        {
-            return m_Values;
-        }
-
-    private:
-        int    m_Count  = 0;
-        char** m_Values = nullptr;
     };
 
     ////////////////////////////////////////////////////////////////
@@ -48,14 +28,14 @@ namespace Dodo {
 
     struct ApplicationSpecs
     {
-        CommandLineArgs    CmdLineArgs{};
-        uint32_t           Width              = 0;
-        uint32_t           Height             = 0;
-        std::string        Title{};
-        bool               ShowFrameRate      = false;
-        bool               EnableImGui        = false;
-        RenderThreadPolicy RenderThreadPolicy = RenderThreadPolicy::None;
-        RenderSettings     RenderSettings{};
+        CommandLineArgs CmdLineArgs{};
+        uint32_t Width  = 0;
+        uint32_t Height = 0;
+        std::string Title{};
+        bool ShowFrameRate = false;
+        bool EnableImGui = false;
+        RenderSettings  RenderSettings{};
+        ThreadingPolicy ThreadingPolicy = ThreadingPolicy::None;
     };
 
     ////////////////////////////////////////////////////////////////
@@ -64,9 +44,11 @@ namespace Dodo {
 
     struct PerformanceStats
     {
-        double MainThreadWaitTime   = 0.0;
-        double RenderThreadWaitTime = 0.0;
-        double RenderThreadWorkTime = 0.0;
+        double   MainThreadWaitTime   = 0.0;
+        double   MainThreadWorkTime   = 0.0;
+        double   RenderThreadWaitTime = 0.0;
+        double   RenderThreadWorkTime = 0.0;
+        uint64_t FrameRate            =   0;
     };
 
     ////////////////////////////////////////////////////////////////
@@ -112,33 +94,22 @@ namespace Dodo {
 
         void Run();
 
-    protected:
-        virtual void OnInit() {}
-
-        virtual void OnUpdate() {}
-
-        virtual void OnBeginRender() {}
-
-        virtual void OnRender() {}
-
-        virtual void OnEndRender() {}
-
-        virtual void OnDispose() {}
-
     private:
         static Application* s_App;
 
-        void Init();
+        void Init ();
+        void Close();
 
-        void Dispose();
+        void OnEvent(Event& e);
+        bool OnWindowResized(WindowResizeEvent& e);
+        bool OnWindowMinimized(WindowMinimizeEvent& e);
+        bool OnWindowClosed(WindowCloseEvent& e);
 
-        ApplicationSpecs  m_Specs;
-        Ref<RenderThread> m_RenderThread = nullptr;
-        Ref<Window>       m_Window       = nullptr;
-        bool              m_IsRunning    = true;
-        Stopwatch         m_FrameRateWatch{};
-        uint32_t          m_FrameRate    = 0;
-        PerformanceStats  m_PerformanceStats{};
+        ApplicationSpecs m_Specs;
+        RenderThread m_RenderThread;
+        Ref<Window> m_Window = nullptr;
+        bool m_IsRunning = true, m_IsMinimized = false;
+        PerformanceStats m_PerformanceStats{};
     };
 
 }

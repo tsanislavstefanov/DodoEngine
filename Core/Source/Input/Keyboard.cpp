@@ -22,7 +22,6 @@ namespace Dodo {
 
     bool Keyboard::OnKeyDown(KeyCode keyCode)
     {
-        KeyDown.Emit({ keyCode });
         const auto keyIndex = static_cast<size_t>(keyCode);
         m_State.Keys.at(keyIndex) = true;
         return true;
@@ -30,7 +29,6 @@ namespace Dodo {
 
     bool Keyboard::OnKeyUp(KeyCode keyCode)
     {
-        KeyUp.Emit({ keyCode });
         const auto keyIndex = static_cast<size_t>(keyCode);
         m_State.Keys.at(keyIndex) = false;
         return true;

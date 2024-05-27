@@ -1,8 +1,6 @@
 #include "pch.h"
 #include "RenderThread.h"
-#ifdef PLATFORM_WINDOWS
-#   include "Platform/Windows/WindowsRenderThread.h"
-#endif
+#include "Platform.h"
 #include "Renderer/Renderer.h"
 
 namespace Dodo {
@@ -11,51 +9,31 @@ namespace Dodo {
     // RENDER THREAD ///////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    Ref<RenderThread> RenderThread::Create(RenderThreadPolicy policy)
-    {
-#ifdef PLATFORM_WINDOWS
-        return Ref<WindowsRenderThread>::Create(policy);
-#endif
-        ASSERT(false, "Platform not supported!");
-    }
-
-    RenderThread::RenderThread(RenderThreadPolicy policy)
-        :
-        m_ThreadPolicy(policy)
-    {
-        if (m_ThreadPolicy == RenderThreadPolicy::MultiThreaded)
-        {
-            m_Thread = Thread::Create("Render Thread");
-        }
-    }
-
     void RenderThread::Run()
     {
         m_IsRunning = true;
-        if (m_ThreadPolicy == RenderThreadPolicy::MultiThreaded)
+        if (m_ThreadingPolicy == ThreadingPolicy::MultiThreaded)
         {
-            m_Thread->Dispatch(Renderer::RenderThreadProc, this);
+            m_Thread = std::thread(Renderer::RenderThreadProc, this);
+            Platform::SetThreadName(m_Thread, "Render Thread");
         }
     }
 
     void RenderThread::Pump()
     {
         NextFrame();
-        Kick();
         BlockUntilRenderComplete();
     }
 
-    void RenderThread::BlockUntilRenderComplete()
+    void RenderThread::NextFrame()
     {
-        if (m_ThreadPolicy == RenderThreadPolicy::MultiThreaded)
-        {
-            Wait(RenderThreadState::Idle);
-        }
+        Renderer::SwapQueues();
+        Kick();
     }
 
     void RenderThread::Kick()
     {
-        if (m_ThreadPolicy == RenderThreadPolicy::MultiThreaded)
+        if (m_ThreadingPolicy == ThreadingPolicy::MultiThreaded)
         {
             Update(RenderThreadState::Kick);
             return;
@@ -64,18 +42,57 @@ namespace Dodo {
         Renderer::WaitAndRender(this);
     }
 
-    void RenderThread::Kill()
+    void RenderThread::BlockUntilRenderComplete()
     {
-        m_IsRunning = false;
-        if (m_ThreadPolicy == RenderThreadPolicy::MultiThreaded)
+        if (m_ThreadingPolicy == ThreadingPolicy::MultiThreaded)
         {
-            m_Thread->Join();
+            Wait(RenderThreadState::Idle);
         }
     }
 
-    void RenderThread::NextFrame()
+    void RenderThread::Wait(RenderThreadState state)
     {
-        Renderer::SwapBuffers();
+        if (m_ThreadingPolicy == ThreadingPolicy::SingleThreaded)
+        {
+            return;
+        }
+
+        std::unique_lock<std::mutex> lock(m_Mutex);
+        m_ConditionVar.wait(lock, [this, state]() { return m_State == state; });
+    }
+
+    void RenderThread::Update(RenderThreadState state)
+    {
+        if (m_ThreadingPolicy == ThreadingPolicy::SingleThreaded)
+        {
+            return;
+        }
+
+        std::lock_guard<std::mutex> lock(m_Mutex);
+        m_State = state;
+        m_ConditionVar.notify_all();
+    }
+
+    void RenderThread::WaitAndUpdate(RenderThreadState waitForState, RenderThreadState newState)
+    {
+        if (m_ThreadingPolicy == ThreadingPolicy::SingleThreaded)
+        {
+            return;
+        }
+
+        std::unique_lock<std::mutex> lock(m_Mutex);
+        m_ConditionVar.wait(lock, [this, waitForState]() { return m_State == waitForState; });
+        m_State = newState;
+        m_ConditionVar.notify_all();
+    }
+
+    void RenderThread::Stop()
+    {
+        m_IsRunning = false;
+        if (m_ThreadingPolicy == ThreadingPolicy::MultiThreaded)
+        {
+            m_Thread.join();
+        }
     }
 
 }

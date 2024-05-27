@@ -17,23 +17,23 @@ namespace Dodo {
 
         virtual ~RefCounted() = default;
 
-        [[nodiscard]] uint64_t GetRefCount() const
+        uint64_t GetRefCount() const
         {
             return m_RefCount.load();
         }
 
-        void Reference()
+        void Reference() const
         {
             ++m_RefCount;
         }
 
-        void UnReference()
+        void UnReference() const
         {
             --m_RefCount;
         }
 
     private:
-        std::atomic<uint64_t> m_RefCount = 0;
+        mutable std::atomic<uint64_t> m_RefCount = 0;
     };
 
     ////////////////////////////////////////////////////////////////
@@ -96,9 +96,9 @@ namespace Dodo {
             return *this;
         }
 
-        Ref& operator=(const Ref& other)
+        Ref& operator=(const Ref<Type>& other)
         {
-            // To avoid self-assignment.
+            // Avoid self-assignment.
             if (this == &other)
             {
                 return *this;
@@ -175,14 +175,8 @@ namespace Dodo {
             return Ref<Other>(*this);
         }
 
-        void Release()
-        {
-            delete m_Instance;
-            m_Instance = nullptr;
-        }
-
     private:
-        void Reference()
+        void Reference() const
         {
             if (m_Instance)
             {
@@ -190,7 +184,7 @@ namespace Dodo {
             }
         }
 
-        void UnReference()
+        void UnReference() const
         {
             if (!m_Instance)
             {
@@ -204,7 +198,13 @@ namespace Dodo {
             }
         }
 
-        Type* m_Instance;
+        void Release() const
+        {
+            delete m_Instance;
+            m_Instance = nullptr;
+        }
+
+        mutable Type* m_Instance;
 
         template<typename Other>
         friend class Ref;

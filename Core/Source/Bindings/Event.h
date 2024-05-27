@@ -1,0 +1,90 @@
+#pragma once
+
+#include "Func.h"
+
+namespace Dodo {
+
+    ////////////////////////////////////////////////////////////////
+    // EVENT TYPE //////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    enum class EventType
+    {
+        WindowResize   ,
+        WindowMinimize ,
+        WindowClose    ,
+        KeyDown        ,
+        KeyUp          ,
+        MouseScroll    ,
+        MouseButtonDown,
+        MouseButtonUp  ,
+        AutoCount      ,
+        None
+    };
+
+    ////////////////////////////////////////////////////////////////
+    // UTILS ///////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+#ifndef EVENT_TYPE
+    #define EVENT_TYPE(TYPE)                                                        \
+        static EventType GetStaticType()                { return EventType::TYPE; } \
+               EventType GetType      () const override { return GetStaticType(); }
+#endif
+
+    ////////////////////////////////////////////////////////////////
+    // EVENT ///////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    struct Event
+    {
+        bool Handled = false;
+
+        virtual ~Event() = default;
+
+        virtual EventType GetType() const = 0;
+    };
+
+    ////////////////////////////////////////////////////////////////
+    // EVENT FUNC //////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    template<typename Type>
+    using EventFunc = Func<bool(Type&)>;
+
+    ////////////////////////////////////////////////////////////////
+    // EVENT DISPATCHER ////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    class EventDispatcher
+    {
+    public:
+        EventDispatcher(Event& event)
+            : m_Event(event)
+        {}
+
+        template<typename Type>
+        void Dispatch(const EventFunc<Type>& func)
+        {
+            if (m_Event.GetType() == Type::GetStaticType())
+            {
+                if (m_Event.Handled)
+                {
+                    return;
+                }
+
+                m_Event.Handled = func(static_cast<Type&>(m_Event));
+            }
+        }
+
+    private:
+        Event& m_Event;
+    };
+
+    ////////////////////////////////////////////////////////////////
+    // EVENT CALLBACK //////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    using EventCallback = Func<void(Event&)>;
+
+}

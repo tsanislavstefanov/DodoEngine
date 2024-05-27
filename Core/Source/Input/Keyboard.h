@@ -1,35 +1,8 @@
 #pragma once
 
 #include "KeyCode.h"
-#include "Bindings/Signal.h"
 
 namespace Dodo {
-
-    ////////////////////////////////////////////////////////////////
-    // KEY DOWN EVENT //////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    struct KeyDownEvent
-    {
-        const KeyCode Code;
-
-        KeyDownEvent(KeyCode keyCode)
-            : Code(keyCode)
-        {}
-    };
-
-    ////////////////////////////////////////////////////////////////
-    // KEY UP EVENT ////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    struct KeyUpEvent
-    {
-        const KeyCode Code;
-
-        KeyUpEvent(KeyCode keyCode)
-            : Code(keyCode)
-        {}
-    };
 
     ////////////////////////////////////////////////////////////////
     // KEYBOARD ////////////////////////////////////////////////////
@@ -38,9 +11,6 @@ namespace Dodo {
     class Keyboard
     {
     public:
-        Signal<const KeyDownEvent&> KeyDown{};
-        Signal<const KeyUpEvent&>   KeyUp  {};
-
         virtual ~Keyboard() = default;
 
         bool GetKey(KeyCode keyCode) const

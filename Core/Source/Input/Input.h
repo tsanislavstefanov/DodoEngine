@@ -1,16 +1,11 @@
 #pragma once
 
+#include "Keyboard.h"
 #include "KeyCode.h"
+#include "Mouse.h"
 #include "MouseCode.h"
 
 namespace Dodo {
-
-    ////////////////////////////////////////////////////////////////
-    // FORWARD DECLARATIONS ////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    class Keyboard;
-    class Mouse;
 
     ////////////////////////////////////////////////////////////////
     // INPUT ///////////////////////////////////////////////////////
@@ -20,23 +15,44 @@ namespace Dodo {
     {
     public:
         static Keyboard* Keyboard;
-        static Mouse*    Mouse;
+        static Mouse* Mouse;
 
-        static bool  GetKey(KeyCode keyCode);
+        static bool GetKey(KeyCode keyCode)
+        {
+            return Keyboard->GetKey(keyCode);
+        }
                     
-        static bool  GetKeyDown(KeyCode keyCode);
+        static bool GetKeyDown(KeyCode keyCode)
+        {
+            return Keyboard->GetKeyDown(keyCode);
+        }
                     
-        static bool  GetKeyUp(KeyCode keyCode);
+        static bool GetKeyUp(KeyCode keyCode)
+        {
+            return Keyboard->GetKeyUp(keyCode);
+        }
                     
-        static float GetMouseWheelDelta();
+        static float GetMouseWheelDelta()
+        {
+            return Mouse->GetWheelDelta();
+        }
                     
-        static bool  GetMouseButton(MouseCode mouseCode);
+        static bool GetMouseButton(MouseCode mouseCode)
+        {
+            return Mouse->GetButton(mouseCode);
+        }
                     
-        static bool  GetMouseButtonDown(MouseCode mouseCode);
+        static bool GetMouseButtonDown(MouseCode mouseCode)
+        {
+            return Mouse->GetButtonDown(mouseCode);
+        }
                     
-        static bool  GetMouseButtonUp(MouseCode mouseCode);
+        static bool GetMouseButtonUp(MouseCode mouseCode)
+        {
+            return Mouse->GetButtonUp(mouseCode);
+        }
 
-        static void  Update();
+        static void Update();
 
         virtual ~Input() = default;
     };

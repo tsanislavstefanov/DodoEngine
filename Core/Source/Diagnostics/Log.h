@@ -8,7 +8,7 @@ namespace Dodo {
 
     enum class LoggerType
     {
-        Console,
+        Console  ,
         AutoCount,
         None
     };
@@ -19,11 +19,11 @@ namespace Dodo {
 
     enum class LogLevel
     {
-        Debug,
-        Info,
-        Warning,
-        Error,
-        Fatal,
+        Debug    ,
+        Info     ,
+        Warning  ,
+        Error    ,
+        Fatal    ,
         AutoCount,
         None
     };
@@ -102,7 +102,7 @@ namespace Dodo {
 
 }
 
-#ifdef CONFIGURATION_DEBUG
+#ifdef DODO_DEBUG
 #   define LOG_CORE_DEBUG(...)   Dodo::Log::GetCoreLogger()->LogDebug  (__VA_ARGS__)
 #   define LOG_CORE_INFO(...)    Dodo::Log::GetCoreLogger()->LogInfo   (__VA_ARGS__)
 #   define LOG_CORE_WARNING(...) Dodo::Log::GetCoreLogger()->LogWarning(__VA_ARGS__)

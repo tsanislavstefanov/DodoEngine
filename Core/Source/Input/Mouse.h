@@ -1,48 +1,8 @@
 #pragma once
 
 #include "MouseCode.h"
-#include "Bindings/Signal.h"
 
 namespace Dodo {
-
-    ////////////////////////////////////////////////////////////////
-    // MOUSE SCROLL EVENT //////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    struct MouseScrollEvent
-    {
-        const float WheelDelta;
-
-        MouseScrollEvent(float wheelDelta)
-            : WheelDelta(wheelDelta)
-        {}
-    };
-
-    ////////////////////////////////////////////////////////////////
-    // MOUSE BUTTON DOWN EVENT /////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    struct MouseButtonDownEvent
-    {
-        const MouseCode Code;
-
-        MouseButtonDownEvent(MouseCode mouseCode)
-            : Code(mouseCode)
-        {}
-    };
-
-    ////////////////////////////////////////////////////////////////
-    // MOUSE BUTTON UP EVENT ///////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    struct MouseButtonUpEvent
-    {
-        const MouseCode Code;
-
-        MouseButtonUpEvent(MouseCode mouseCode)
-            : Code(mouseCode)
-        {}
-    };
 
     ////////////////////////////////////////////////////////////////
     // MOUSE ///////////////////////////////////////////////////////
@@ -51,10 +11,6 @@ namespace Dodo {
     class Mouse
     {
     public:
-        Signal<const MouseScrollEvent&>     WheelScroll{};
-        Signal<const MouseButtonDownEvent&> ButtonDown {};
-        Signal<const MouseButtonUpEvent&>   ButtonUp   {};
-
         virtual ~Mouse() = default;
 
         float GetWheelDelta() const

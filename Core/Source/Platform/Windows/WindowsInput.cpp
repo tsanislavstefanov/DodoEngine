@@ -28,7 +28,7 @@ namespace Dodo {
                 case '8'     : return KeyCode::Alpha8;
                 case '9'     : return KeyCode::Alpha9;
                 case 'A'     : return KeyCode::A;
-                default      : ASSERT(false, "KeyCode not supported!");
+                default      : DODO_ASSERT(false, "KeyCode not supported!");
             }
             
             return KeyCode::None;
@@ -52,7 +52,6 @@ namespace Dodo {
 
     bool WindowsKeyboard::Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam)
     {
-        DODO_MAYBE_UNUSED(handle);
         switch (msg)
         {
             case WM_SYSKEYDOWN:
@@ -122,7 +121,7 @@ namespace Dodo {
     struct WindowsInputData
     {
         WindowsKeyboard Keyboard{};
-        WindowsMouse    Mouse   {};
+        WindowsMouse Mouse{};
     };
 
     static WindowsInputData s_Data{};
@@ -134,7 +133,7 @@ namespace Dodo {
     void WindowsInput::Init()
     {
         Keyboard = &s_Data.Keyboard;
-        Mouse = &s_Data.Mouse;
+        Mouse    = &s_Data.Mouse;
     }
 
     bool WindowsInput::Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam)

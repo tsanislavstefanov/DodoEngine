@@ -1,10 +1,9 @@
 #include "pch.h"
 #include "Renderer.h"
-#include "RenderDevice.h"
+#include "RendererApi.h"
 #include "Core/Application.h"
 #include "Core/RenderThread.h"
-#include "Diagnostics/Stopwatch.h"
-#include "Drivers/Vulkan/VulkanDevice.h"
+#include "Drivers/Vulkan/VulkanRenderer.h"
 
 namespace Dodo {
 
@@ -14,12 +13,12 @@ namespace Dodo {
 
     namespace Utils {
 
-        static RenderDevice* CreateRenderDevice(RenderDeviceType deviceType)
+        static RendererApi* CreateRendererApi(RendererApiType apiType)
         {
-            switch (deviceType)
+            switch (apiType)
             {
-                case RenderDeviceType::Vulkan: return new VulkanDevice();
-                default                      : ASSERT(false, "RenderDeviceType not supported!");
+                case RendererApiType::Vulkan: return new VulkanRenderer();
+                default: DODO_ASSERT(false, "Renderer API type not supported!");
             }
 
             return nullptr;
@@ -33,11 +32,10 @@ namespace Dodo {
 
     struct RendererData
     {
-        RenderSettings                    Settings{};
-        const size_t                      CommandBufferCount = 2;
-        std::vector<RenderCommandBuffer*> CommandBuffers{};
-        RenderDevice*                     Device = nullptr;
-        size_t                            CommandBufferSubmissionIndex = 0;
+        RenderSettings Settings{};
+        std::vector<RenderCommandQueue*> CommandQueues{};
+        RendererApi* RendererApi = nullptr;
+        size_t SubmissionCommandQueueIndex = 0;
     };
 
     static RendererData s_Data{};
@@ -51,17 +49,40 @@ namespace Dodo {
         return s_Data.Settings;
     }
 
-    void Renderer::SetSettings(const RenderSettings& settings)
+    void Renderer::SetSettings(const RenderSettings &settings)
     {
         s_Data.Settings = settings;
     }
 
     void Renderer::Init()
     {
-        s_Data.CommandBuffers.resize(s_Data.CommandBufferCount);
-        s_Data.CommandBuffers.at(0) = new RenderCommandBuffer();
-        s_Data.CommandBuffers.at(1) = new RenderCommandBuffer();
-        s_Data.Device               = Utils::CreateRenderDevice(s_Data.Settings.RenderDeviceType);
+        // Schedule commands in one queue while executing the other.
+        s_Data.CommandQueues.resize(2);
+        s_Data.CommandQueues.at(0) = new RenderCommandQueue();
+        s_Data.CommandQueues.at(1) = new RenderCommandQueue();
+
+        s_Data.RendererApi = Utils::CreateRendererApi(s_Data.Settings.RendererApiType);
+    }
+
+    void Renderer::Shutdown()
+    {
+        s_Data.RendererApi->Shutdown();
+        delete s_Data.RendererApi;
+        for (const auto queue : s_Data.CommandQueues)
+        {
+            delete queue;
+        }
+    }
+
+    RenderCommandQueue* Renderer::GetSubmissionCommandQueue()
+    {
+        return s_Data.CommandQueues.at(s_Data.SubmissionCommandQueueIndex);
+    }
+
+    RenderCommandQueue* Renderer::GetRenderCommandQueue()
+    {
+        const auto index = (s_Data.SubmissionCommandQueueIndex + 1) % s_Data.CommandQueues.size();
+        return s_Data.CommandQueues.at(index);
     }
 
     void Renderer::RenderThreadProc(RenderThread* renderThread)
@@ -75,62 +96,23 @@ namespace Dodo {
     void Renderer::WaitAndRender(RenderThread* renderThread)
     {
         PerformanceStats& performanceStats = Application::GetCurrent().GetStats();
-
-        // Wait for kick and start render.
+        // Wait for kick and start to render.
         {
-            Stopwatch stopwatch{};
+            Stopwatch waitStopwatch{};
             renderThread->WaitAndUpdate(RenderThreadState::Kick, RenderThreadState::Busy);
-            performanceStats.RenderThreadWaitTime = stopwatch.GetAsMilliseconds();
+            performanceStats.RenderThreadWaitTime = waitStopwatch.GetAsMilliseconds();
         }
 
-        Stopwatch stopwatch{};
-        GetRenderCommandBuffer()->Execute();
+        Stopwatch workStopwatch{};
+        GetRenderCommandQueue()->Execute();
         // Render done.
         renderThread->Update(RenderThreadState::Idle);
-        performanceStats.RenderThreadWorkTime = stopwatch.GetAsMilliseconds();
+        performanceStats.RenderThreadWorkTime = workStopwatch.GetAsMilliseconds();
     }
 
-    void Renderer::BeginFrame()
+    void Renderer::SwapQueues()
     {
-        s_Data.Device->BeginFrame();
-    }
-
-    void Renderer::Resize(uint32_t width, uint32_t height)
-    {
-        s_Data.Device->Resize(width, height);
-    }
-
-    void Renderer::SwapBuffers()
-    {
-        s_Data.CommandBufferSubmissionIndex = (s_Data.CommandBufferSubmissionIndex + 1) % s_Data.CommandBufferCount;
-    }
-
-    void Renderer::EndFrame()
-    {
-        s_Data.Device->EndFrame();
-    }
-
-    void Renderer::Dispose()
-    {
-        s_Data.Device->Dispose();
-        delete s_Data.CommandBuffers.at(0);
-        delete s_Data.CommandBuffers.at(1);
-    }
-
-    RenderCommandBuffer* Renderer::GetSubmissionCommandBuffer()
-    {
-        return GetCommandBuffer(s_Data.CommandBufferSubmissionIndex);
-    }
-
-    RenderCommandBuffer* Renderer::GetRenderCommandBuffer()
-    {
-        const auto index = (s_Data.CommandBufferSubmissionIndex + 1) % s_Data.CommandBufferCount;
-        return GetCommandBuffer(index);
-    }
-
-    RenderCommandBuffer* Renderer::GetCommandBuffer(size_t index)
-    {
-        return s_Data.CommandBuffers.at(index);
+        s_Data.SubmissionCommandQueueIndex = (s_Data.SubmissionCommandQueueIndex + 1) % s_Data.CommandQueues.size();
     }
 
 }

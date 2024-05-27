@@ -21,14 +21,12 @@ namespace Dodo {
 
     bool Mouse::OnWheelScroll(float wheelDelta)
     {
-        WheelScroll.Emit({ wheelDelta });
         m_State.WheelDelta = wheelDelta;
         return true;
     }
 
     bool Mouse::OnButtonDown(MouseCode mouseCode)
     {
-        ButtonDown.Emit({ mouseCode });
         const auto buttonIndex = static_cast<size_t>(mouseCode);
         m_State.Buttons.at(buttonIndex) = true;
         return true;
@@ -36,7 +34,6 @@ namespace Dodo {
 
     bool Mouse::OnButtonUp(MouseCode mouseCode)
     {
-        ButtonUp.Emit({ mouseCode });
         const auto buttonIndex = static_cast<size_t>(mouseCode);
         m_State.Buttons.at(buttonIndex) = false;
         return true;

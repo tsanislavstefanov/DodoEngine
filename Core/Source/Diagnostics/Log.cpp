@@ -33,11 +33,11 @@ namespace Dodo {
         {
             static constexpr auto MaxSinkCount = static_cast<size_t>(LogLevel::AutoCount);
             std::array<std::string, MaxSinkCount> Colors = {
-                    "\033[32m", // Debug  : Green.
-                    "\033[36m", // Info   : Cyan.
-                    "\033[33m", // Warning: Yellow.
-                    "\033[31m", // Error  : Red.
-                    "\033[35m"  // Fatal  : Magenta.
+                    "\033[32m", // Green (Debug).
+                    "\033[36m", // Cyan (Info).
+                    "\033[33m", // Yellow (Warning).
+                    "\033[31m", // Red (Error).
+                    "\033[35m"  // Magenta (Fatal).
             };
             std::string Off = "\033[0m";
         };

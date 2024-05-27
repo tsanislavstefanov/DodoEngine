@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Window.h"
-#ifdef PLATFORM_WINDOWS
+#include "Input/Input.h"
+#ifdef DODO_WINDOWS
 #   include "Platform/Windows/WindowsWindow.h"
 #endif
 
@@ -12,10 +13,16 @@ namespace Dodo {
 
     Ref<Window> Window::Create(const WindowSpecs& specs)
     {
-#ifdef PLATFORM_WINDOWS
+#ifdef DODO_WINDOWS
         return Ref<WindowsWindow>::Create(specs);
 #endif
-        ASSERT(false, "Platform not supported!");
+        DODO_ASSERT(false, "Platform not supported!");
+    }
+
+    void Window::ProcessEvents()
+    {
+        Input::Update();
+        PollEvents();
     }
 
 }

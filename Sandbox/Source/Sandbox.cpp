@@ -15,13 +15,6 @@ namespace Dodo {
             Application(specs)
         {}
 
-        void OnInit() override
-        {
-            LOG_CORE_INFO("Hello World!");
-            LOG_CORE_WARNING("Hello World!");
-            LOG_CORE_ERROR("Hello World!");
-            LOG_CORE_FATAL("Hello World!");
-        }
     };
 
 }
@@ -29,18 +22,18 @@ namespace Dodo {
 Dodo::Application* CreateApplication(const Dodo::CommandLineArgs& cmdLineArgs)
 {
     Dodo::RenderSettings renderSettings{};
-    renderSettings.RenderDeviceType = Dodo::RenderDeviceType::Vulkan;
-    renderSettings.VSyncMode        = Dodo::VSyncMode::Enable;
-    renderSettings.BackBufferCount  = 2;
+    renderSettings.RendererApiType = Dodo::RendererApiType::Vulkan;
+    renderSettings.VSyncMode       = Dodo::VSyncMode::Enable;
+    renderSettings.FramesInFlight  = 2;
 
     Dodo::ApplicationSpecs appSpecs{};
-    appSpecs.CmdLineArgs        = cmdLineArgs;
-    appSpecs.Width              = 1280;
-    appSpecs.Height             = 720;
-    appSpecs.Title              = "Sandbox";
-    appSpecs.ShowFrameRate      = true;
-    appSpecs.EnableImGui        = true;
-    appSpecs.RenderThreadPolicy = Dodo::RenderThreadPolicy::MultiThreaded;
-    appSpecs.RenderSettings     = renderSettings;
+    appSpecs.CmdLineArgs     = cmdLineArgs;
+    appSpecs.Width           = 1280;
+    appSpecs.Height          = 720;
+    appSpecs.Title           = "Sandbox";
+    appSpecs.ShowFrameRate   = true;
+    appSpecs.EnableImGui     = false;
+    appSpecs.ThreadingPolicy = Dodo::ThreadingPolicy::MultiThreaded;
+    appSpecs.RenderSettings  = renderSettings;
     return new Dodo::Sandbox(appSpecs);
 }

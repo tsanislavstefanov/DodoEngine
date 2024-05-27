@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderCommandBuffer.h"
+#include "RenderCommandQueue.h"
 #include "RenderSettings.h"
 
 namespace Dodo {
@@ -19,45 +19,25 @@ namespace Dodo {
     {
     public:
         static const RenderSettings& GetSettings();
-
         static void SetSettings(const RenderSettings& settings);
-
         static void Init();
 
-        static void RenderThreadProc(RenderThread* renderThread);
-
-        static void WaitAndRender(RenderThread* renderThread);
-
-        template<typename Task>
-        static void SubmitTask(Task&& task)
+        template<typename Command>
+        static void Schedule(Command&& command)
         {
-            auto cmd = [](void* memory) {
-                auto task = reinterpret_cast<Task*>(memory);
-                (*task)();
-
-                task->~Task();
-            };
-
-            auto memory = GetSubmissionCommandBuffer()->Allocate(cmd, sizeof(task));
-            new (memory) Task(std::forward<Task>(task));
+            GetSubmissionCommandQueue()->Submit(std::forward<Command>(command));
         }
 
-        static void BeginFrame();
-
-        static void Resize(uint32_t width, uint32_t height);
-
-        static void SwapBuffers();
-
-        static void EndFrame();
-
-        static void Dispose();
+        static void Shutdown();
 
     private:
-        static RenderCommandBuffer* GetSubmissionCommandBuffer();
+        static RenderCommandQueue* GetSubmissionCommandQueue();
+        static RenderCommandQueue* GetRenderCommandQueue();
+        static void RenderThreadProc(RenderThread* renderThread);
+        static void WaitAndRender(RenderThread* renderThread);
+        static void SwapQueues();
 
-        static RenderCommandBuffer* GetRenderCommandBuffer();
-
-        static RenderCommandBuffer* GetCommandBuffer(size_t index);
+        friend class RenderThread;
     };
 
 }

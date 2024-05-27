@@ -10,6 +10,7 @@ namespace Dodo {
     {
     public:
         static std::string GetDatetimeAsString();
+        static void SetThreadName(std::thread& thread, const std::string& name);
     };
 
 }

@@ -1,6 +1,8 @@
 #pragma once
 
-#include "Bindings/Signal.h"
+#include "Bindings/Event.h"
+#include "Renderer/RenderContext.h"
+#include "Renderer/Swapchain.h"
 
 namespace Dodo {
 
@@ -10,16 +12,16 @@ namespace Dodo {
 
     struct WindowSpecs
     {
-        uint32_t    Width  = 0;
-        uint32_t    Height = 0;
+        uint32_t Width = 0, Height = 0;
         std::string Title{};
+        bool Maximized = false;
     };
 
     ////////////////////////////////////////////////////////////////
     // WINDOW RESIZE EVENT /////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    struct WindowResizeEvent
+    struct WindowResizeEvent : public Event
     {
         const uint32_t Width, Height;
 
@@ -27,6 +29,34 @@ namespace Dodo {
             : Width (width )
             , Height(height)
         {}
+
+        EVENT_TYPE(WindowResize)
+    };
+
+    ////////////////////////////////////////////////////////////////
+    // WINDOW MINIMIZE EVENT /////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    struct WindowMinimizeEvent : public Event
+    {
+        const bool Iconify;
+
+        WindowMinimizeEvent(bool iconify)
+            : Iconify(iconify)
+        {}
+
+        EVENT_TYPE(WindowMinimize)
+    };
+
+    ////////////////////////////////////////////////////////////////
+    // WINDOW CLOSE EVENT //////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    struct WindowCloseEvent : public Event
+    {
+        WindowCloseEvent() = default;
+
+        EVENT_TYPE(WindowClose)
     };
 
     ////////////////////////////////////////////////////////////////
@@ -38,31 +68,21 @@ namespace Dodo {
     public:
         static Ref<Window> Create(const WindowSpecs& specs);
 
-        Signal<const WindowResizeEvent&> Resize{};
-        Signal<> Close{};
+        virtual ~Window() = default;
 
-        [[nodiscard]] virtual void* GetHandle() const = 0;
+        uint32_t GetWidth () const { return m_Data.Width ; }
+        uint32_t GetHeight() const { return m_Data.Height; }
 
-        [[nodiscard]] uint32_t GetWidth() const
-        {
-            return m_Data.Width;
-        }
+        Ref<Swapchain> GetSwapchain() const { return m_Swapchain; }
 
-        [[nodiscard]] uint32_t GetHeight() const
-        {
-            return m_Data.Height;
-        }
+        void SetEventCallback(const EventCallback& eventCallback) { m_Data.EventCallback = eventCallback; }
+        bool HasFocus() const { return m_Data.HasFocus; }
+        void ProcessEvents();
 
-        [[nodiscard]] bool HasFocus() const
-        {
-            return m_Data.HasFocus;
-        }
-
-        virtual void SetTitle(const std::string& title) = 0;
-
-        virtual void PollEvents() = 0;
-
-        virtual void Dispose() = 0;
+        virtual void* GetHandle() const = 0;
+        virtual void  SetTitle(const std::string& title) = 0;
+        virtual void  PollEvents() = 0;
+        virtual void  Destroy() = 0;
 
     protected:
         ////////////////////////////////////////////////////////////
@@ -71,13 +91,15 @@ namespace Dodo {
 
         struct WindowData
         {
-            uint32_t    Width    = 0;
-            uint32_t    Height   = 0;
+            uint32_t Width = 0, Height = 0;
             std::string Title{};
-            bool        HasFocus = false;
+            bool HasFocus = false;
+            EventCallback EventCallback{};
         };
 
         WindowData m_Data{};
+        Ref<RenderContext> m_RenderContext = nullptr;
+        Ref<Swapchain> m_Swapchain = nullptr;
     };
 
 }
