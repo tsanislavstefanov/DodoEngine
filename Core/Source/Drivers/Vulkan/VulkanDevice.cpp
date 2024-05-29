@@ -169,7 +169,7 @@ namespace Dodo {
         deviceInfo.pQueueCreateInfos = queueCreateInfos.data();
         deviceInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size());
         deviceInfo.ppEnabledExtensionNames = enabledExtensions.data();
-        DODO_VK_RESULT(vkCreateDevice(m_PhysicalDevice->GetNativePhysicalDevice(), &deviceInfo, nullptr, &m_Device));
+        DODO_VK_RESULT(vkCreateDevice(m_PhysicalDevice->GetVulkanPhysicalDevice(), &deviceInfo, nullptr, &m_Device));
 
         // Get queue(s).
         const auto& queueFamilyIndices = m_PhysicalDevice->GetQueueFamilyIndices();

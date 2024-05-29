@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "RenderContext.h"
-#include "Core/Application.h"
+#include "Renderer.h"
 #include "Drivers/Vulkan/VulkanContext.h"
 
 namespace Dodo {
@@ -11,8 +11,7 @@ namespace Dodo {
 
     Ref<RenderContext> RenderContext::Create()
     {
-        const ApplicationSpecs& appSpecs = Application::GetCurrent().GetSpecs();
-        switch (appSpecs.RenderSettings.RendererApiType)
+        switch (Renderer::GetSettings().RendererApiType)
         {
             case RendererApiType::Vulkan: return Ref<VulkanContext>::Create();
             default: DODO_ASSERT(false, "Renderer API type not supported!");

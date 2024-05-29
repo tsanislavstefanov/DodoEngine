@@ -35,6 +35,7 @@
 
 #include "Core/Core.h"
 #include "Diagnostics/Stopwatch.h"
+#include "Memory/Buffer.h"
 #include "Memory/Ref.h"
 
 ////////////////////////////////////////////////////////////////

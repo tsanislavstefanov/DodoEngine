@@ -36,7 +36,7 @@ namespace Dodo {
     class RenderCommandQueue
     {
     public:
-        RenderCommandQueue();
+        RenderCommandQueue() = default;
 
         template<typename Job>
         void Submit(Job&& job)

@@ -68,10 +68,6 @@ namespace Dodo {
     // RENDER COMMAND BUFFER ///////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    RenderCommandQueue::RenderCommandQueue()
-    {
-    }
-
     void RenderCommandQueue::Execute()
     {
         for (auto& chunk : m_Chunks)

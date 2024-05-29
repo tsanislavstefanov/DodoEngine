@@ -6,6 +6,7 @@
 #endif
 
 #include "Vulkan.h"
+#include "VulkanAllocator.h"
 
 namespace Dodo {
 
@@ -198,6 +199,55 @@ namespace Dodo {
 
         // Create logical device.
         m_Device = Ref<VulkanDevice>::Create(m_Instance);
+        VulkanAllocator::Init();
+    }
+
+    VkCommandBuffer VulkanContext::AllocateThreadLocalCommandBuffer(bool begin)
+    {
+        VkCommandBufferAllocateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        createInfo.commandPool = GetOrCreateThreadLocalCommandPool();
+        createInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        createInfo.commandBufferCount = 1;
+        VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+        DODO_VK_RESULT(vkAllocateCommandBuffers(m_Device->GetVulkanDevice(), &createInfo, &commandBuffer));
+        if (begin)
+        {
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            DODO_VK_RESULT(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+        }
+
+        return commandBuffer;
+    }
+
+    void VulkanContext::FlushCommandBuffer(VkCommandBuffer commandBuffer)
+    {
+        FlushCommandBuffer(commandBuffer, m_Device->GetGraphicsQueue());
+    }
+
+    void VulkanContext::FlushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue)
+    {
+        // End command buffer recording.
+        DODO_VK_RESULT(vkEndCommandBuffer(commandBuffer));
+
+        // Submit to graphics queue.
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+        VkFenceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        VkFence fence = VK_NULL_HANDLE;
+        DODO_VK_RESULT(vkCreateFence(m_Device->GetVulkanDevice(), &createInfo, nullptr, &fence));
+        DODO_VK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, fence));
+
+        // Wait for the fence to signal.
+        static constexpr uint64_t defaultFenceTimeout = std::numeric_limits<uint64_t>::max();
+        DODO_VK_RESULT(vkWaitForFences(m_Device->GetVulkanDevice(), 1, &fence, VK_TRUE, defaultFenceTimeout));
+
+        vkDestroyFence(m_Device->GetVulkanDevice(), fence, nullptr);
+        vkFreeCommandBuffers(m_Device->GetVulkanDevice(), GetOrCreateThreadLocalCommandPool(), 1, &commandBuffer);
     }
 
     void VulkanContext::Destroy()
@@ -209,6 +259,26 @@ namespace Dodo {
         }
 
         vkDestroyInstance(m_Instance, nullptr);
+        VulkanAllocator::Destroy();
+    }
+
+    VkCommandPool VulkanContext::GetOrCreateThreadLocalCommandPool()
+    {
+        const auto threadId = std::this_thread::get_id();
+        auto found = m_CommandPools.find(threadId);
+        if (found != m_CommandPools.end())
+        {
+            return found->second;
+        }
+        
+        VkCommandPoolCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        createInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        createInfo.queueFamilyIndex = m_Device->GetPhysicalDevice()->GetQueueFamilyIndices().Graphics.value();
+        VkCommandPool commandPool = VK_NULL_HANDLE;
+        DODO_VK_RESULT(vkCreateCommandPool(m_Device->GetVulkanDevice(), &createInfo, nullptr, &commandPool));
+        m_CommandPools.insert({ threadId, commandPool });
+        return commandPool;
     }
 
 }

@@ -36,10 +36,19 @@ namespace Dodo {
 
         VulkanContext();
 
+        uint32_t GetVulkanApiVersion() const { return m_ApiVersion; }
+
+        VkCommandBuffer AllocateThreadLocalCommandBuffer(bool begin);
+        void FlushCommandBuffer(VkCommandBuffer commandBuffer);
+        void FlushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue);
+
+        // Inherited via [RenderContext].
         void Destroy() override;
 
     private:
         static VulkanContext* s_Context;
+
+        VkCommandPool GetOrCreateThreadLocalCommandPool();
 
         uint32_t m_ApiVersion = VK_API_VERSION_1_0;
         std::set<std::string> m_SupportedExtensions{};
@@ -49,6 +58,7 @@ namespace Dodo {
         bool m_LayerFound = false;
         Ref<VulkanDebugMessenger> m_DebugMessenger = nullptr;
         Ref<VulkanDevice> m_Device = nullptr;
+        std::map<std::thread::id, VkCommandPool> m_CommandPools{};
     };
 
 }

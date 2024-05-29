@@ -21,21 +21,23 @@ namespace Dodo {
     void Application::Run()
     {
         Init();
+
+        Stopwatch frameStopwatch{};
+        frameStopwatch.Start();
+
+        
         while (m_IsRunning)
         {
-            // Wait for RenderThread to finish frame.
+            // Wait for RenderThread to finish [N - 2].
             {
                 Stopwatch waitStopwatch{};
                 m_RenderThread.BlockUntilRenderComplete();
                 m_PerformanceStats.MainThreadWaitTime = waitStopwatch.GetAsMilliseconds();
             }
 
-            Stopwatch stopwatch{};
-            stopwatch.Start();
-
             m_Window->ProcessEvents();
 
-            // Render previous frame and prepare new.
+            // Render previous frame [N - 1] and prepare new [N].
             m_RenderThread.NextFrame();
 
             // Don't update the application when not focused.
@@ -44,7 +46,6 @@ namespace Dodo {
                 continue;
             }
 
-            // Render frame.
             Renderer::Schedule([this]()
             {
                 m_Window->GetSwapchain()->BeginFrame();
@@ -52,12 +53,16 @@ namespace Dodo {
 
             Renderer::Schedule([this]()
             {
+                int a  = 5 + 5;
+            });
+
+            Renderer::Schedule([this]()
+            {
                 m_Window->GetSwapchain()->Present();
             });
 
-            // Accumulate frame rate.
             m_PerformanceStats.FrameRate++;
-            if (stopwatch.GetAsSeconds() >= 1.0)
+            if (frameStopwatch.GetAsSeconds() >= 1.0)
             {
                 if (m_Specs.ShowFrameRate)
                 {
@@ -65,6 +70,7 @@ namespace Dodo {
                 }
 
                 m_PerformanceStats.FrameRate = 0;
+                frameStopwatch.Reset();
             }
         }
 
@@ -75,6 +81,8 @@ namespace Dodo {
     {
         Renderer::SetSettings(m_Specs.RenderSettings);
 
+        m_RenderThread.Run();
+
         // Create window & set event callback.
         WindowSpecs windowSpecs{};
         windowSpecs.Width  = m_Specs.Width;
@@ -84,8 +92,6 @@ namespace Dodo {
         m_Window->SetEventCallback([this](Event& e) { OnEvent(e); });
 
         Renderer::Init();
-
-        m_RenderThread.Run();
 
         // Render one frame.
         m_RenderThread.Pump();
@@ -119,13 +125,13 @@ namespace Dodo {
         return false;
     }
 
-    bool Application::OnWindowMinimized(WindowMinimizeEvent &e)
+    bool Application::OnWindowMinimized(WindowMinimizeEvent& e)
     {
         m_IsMinimized = e.Iconify;
         return false;
     }
 
-    bool Application::OnWindowClosed(WindowCloseEvent &e)
+    bool Application::OnWindowClosed(WindowCloseEvent& e)
     {
         m_IsRunning = false;
         return false;

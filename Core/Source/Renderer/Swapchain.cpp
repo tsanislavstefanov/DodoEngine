@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "Swapchain.h"
-#include "Core/Application.h"
+#include "Renderer.h"
 #include "Drivers/Vulkan/VulkanSwapchain.h"
 
 namespace Dodo {
@@ -11,8 +11,7 @@ namespace Dodo {
 
     Ref<Swapchain> Swapchain::Create(void* windowHandle, uint32_t width, uint32_t height)
     {
-        const ApplicationSpecs& appSpecs = Application::GetCurrent().GetSpecs();
-        switch (appSpecs.RenderSettings.RendererApiType)
+        switch (Renderer::GetSettings().RendererApiType)
         {
             case RendererApiType::Vulkan: return Ref<VulkanSwapchain>::Create(windowHandle, width, height);
             default: DODO_ASSERT(false, "Renderer API type not supported!");

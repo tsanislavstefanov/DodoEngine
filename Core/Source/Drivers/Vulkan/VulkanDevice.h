@@ -20,7 +20,7 @@ namespace Dodo {
     public:
         VulkanPhysicalDevice(VkInstance instance);
 
-        VkPhysicalDevice GetNativePhysicalDevice() const { return m_PhysicalDevice; }
+        VkPhysicalDevice GetVulkanPhysicalDevice() const { return m_PhysicalDevice; }
         std::string GetVendorName () const { return m_VendorName; }
         const QueueFamilyIndices& GetQueueFamilyIndices() const { return m_QueueFamilyIndices; }
         const std::vector<VkDeviceQueueCreateInfo>& GetQueueCreateInfos() const { return m_QueueCreateInfos; }
@@ -48,7 +48,7 @@ namespace Dodo {
         VulkanDevice(VkInstance instance);
 
         Ref<VulkanPhysicalDevice> GetPhysicalDevice() const { return m_PhysicalDevice; }
-        VkDevice GetNativeDevice () const { return m_Device; }
+        VkDevice GetVulkanDevice () const { return m_Device; }
         VkQueue  GetGraphicsQueue() const { return m_GraphicsQueue; }
 
         void Destroy();

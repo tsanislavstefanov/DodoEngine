@@ -28,13 +28,13 @@ namespace Dodo {
 
     struct ApplicationSpecs
     {
-        CommandLineArgs CmdLineArgs{};
-        uint32_t Width  = 0;
-        uint32_t Height = 0;
-        std::string Title{};
-        bool ShowFrameRate = false;
-        bool EnableImGui = false;
-        RenderSettings  RenderSettings{};
+        CommandLineArgs CmdLineArgs     = {};
+        uint32_t        Width           = 0;
+        uint32_t        Height          = 0;
+        std::string     Title           = {};
+        bool            ShowFrameRate   = false;
+        bool            EnableImGui     = false;
+        RenderSettings  RenderSettings  = {};
         ThreadingPolicy ThreadingPolicy = ThreadingPolicy::None;
     };
 
@@ -67,30 +67,11 @@ namespace Dodo {
 
         virtual ~Application() = default;
 
-        const ApplicationSpecs& GetSpecs() const
-        {
-            return m_Specs;
-        }
-
-        Ref<Window> GetWindow()
-        {
-            return m_Window;
-        }
-
-        Ref<Window> GetWindow() const
-        {
-            return m_Window;
-        }
-
-        PerformanceStats& GetStats()
-        {
-            return m_PerformanceStats;
-        }
-
-        const PerformanceStats& GetStats() const
-        {
-            return m_PerformanceStats;
-        }
+        const ApplicationSpecs& GetSpecs() const { return m_Specs; }
+        Ref<Window> GetWindow() { return m_Window; }
+        Ref<Window> GetWindow() const { return m_Window; }
+        PerformanceStats& GetStats()  { return m_PerformanceStats; }
+        const PerformanceStats& GetStats() const { return m_PerformanceStats; }
 
         void Run();
 

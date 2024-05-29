@@ -24,9 +24,9 @@ namespace Dodo {
             VkSurfaceKHR surface = VK_NULL_HANDLE;
 #ifdef DODO_WINDOWS
             VkWin32SurfaceCreateInfoKHR createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-            createInfo.hwnd = static_cast<HWND>(windowHandle);
-            createInfo.hinstance = GetModuleHandleW(nullptr);;
+            createInfo.sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+            createInfo.hinstance = GetModuleHandleW(nullptr);
+            createInfo.hwnd      = static_cast<HWND>(windowHandle);
             DODO_VK_RESULT(vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface));
 #else
             ASSERT(false, "Platform not supported!");
@@ -73,34 +73,31 @@ namespace Dodo {
         m_Device   = VulkanContext::GetCurrentDevice();
         m_Surface  = Utils::CreatePlatformSurface(windowHandle, m_Instance);
 
-        // Get proc. addresses.
         GET_VK_INSTANCE_PROC_ADDR(m_Instance, GetPhysicalDeviceSurfaceCapabilitiesKHR);
         GET_VK_INSTANCE_PROC_ADDR(m_Instance, GetPhysicalDeviceSurfaceFormatsKHR);
         GET_VK_INSTANCE_PROC_ADDR(m_Instance, GetPhysicalDeviceSurfacePresentModesKHR);
         GET_VK_INSTANCE_PROC_ADDR(m_Instance, GetPhysicalDeviceSurfaceSupportKHR);
 
-        GET_VK_DEVICE_PROC_ADDR(m_Device->GetNativeDevice(), CreateSwapchainKHR);
-        GET_VK_DEVICE_PROC_ADDR(m_Device->GetNativeDevice(), DestroySwapchainKHR);
-        GET_VK_DEVICE_PROC_ADDR(m_Device->GetNativeDevice(), GetSwapchainImagesKHR);
-        GET_VK_DEVICE_PROC_ADDR(m_Device->GetNativeDevice(), AcquireNextImageKHR);
-        GET_VK_DEVICE_PROC_ADDR(m_Device->GetNativeDevice(), QueuePresentKHR);
+        GET_VK_DEVICE_PROC_ADDR(m_Device->GetVulkanDevice(), CreateSwapchainKHR);
+        GET_VK_DEVICE_PROC_ADDR(m_Device->GetVulkanDevice(), DestroySwapchainKHR);
+        GET_VK_DEVICE_PROC_ADDR(m_Device->GetVulkanDevice(), GetSwapchainImagesKHR);
+        GET_VK_DEVICE_PROC_ADDR(m_Device->GetVulkanDevice(), AcquireNextImageKHR);
+        GET_VK_DEVICE_PROC_ADDR(m_Device->GetVulkanDevice(), QueuePresentKHR);
 
-        const Ref<VulkanPhysicalDevice> videoAdapter = m_Device->GetPhysicalDevice();
-        m_GraphicsQueueIndex = videoAdapter->GetQueueFamilyIndices().Graphics.value();
+        const auto& physicalDevice = m_Device->GetPhysicalDevice();
+        m_GraphicsQueueIndex = physicalDevice->GetQueueFamilyIndices().Graphics.value();
 
-        // Get available queues.
         uint32_t queueCount = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(videoAdapter->GetNativePhysicalDevice(), &queueCount, nullptr);
+        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice->GetVulkanPhysicalDevice(), &queueCount, nullptr);
         std::vector<VkQueueFamilyProperties> queues(queueCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(videoAdapter->GetNativePhysicalDevice(), &queueCount, queues.data());
-
+        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice->GetVulkanPhysicalDevice(), &queueCount, queues.data());
         // Find present queue.
         // Prefer a queue that supports both present & graphics!
         uint32_t queueIndex = 0;
         for (size_t i = 0; i < queues.size(); i++)
         {
             VkBool32 supportsPresent = false;
-            pfnGetPhysicalDeviceSurfaceSupportKHR(videoAdapter->GetNativePhysicalDevice(), queueIndex, m_Surface, &supportsPresent);
+            pfnGetPhysicalDeviceSurfaceSupportKHR(physicalDevice->GetVulkanPhysicalDevice(), queueIndex, m_Surface, &supportsPresent);
             if (supportsPresent && queueIndex == m_GraphicsQueueIndex)
             {
                 m_PresentQueueIndex = queueIndex;
@@ -117,7 +114,7 @@ namespace Dodo {
             for (size_t i = 0; i < queues.size(); i++)
             {
                 VkBool32 supportsPresent = false;
-                pfnGetPhysicalDeviceSurfaceSupportKHR(videoAdapter->GetNativePhysicalDevice(), queueIndex, m_Surface, &supportsPresent);
+                pfnGetPhysicalDeviceSurfaceSupportKHR(physicalDevice->GetVulkanPhysicalDevice(), queueIndex, m_Surface, &supportsPresent);
                 if (supportsPresent)
                 {
                     m_PresentQueueIndex = queueIndex;
@@ -128,65 +125,117 @@ namespace Dodo {
             }
         }
 
-        // Get present queue.
-        DODO_ASSERT(m_PresentQueueIndex.has_value(), "Present queue not found!");
-        vkGetDeviceQueue(m_Device->GetNativeDevice(), m_PresentQueueIndex.value(), 0, &m_PresentQueue);
-
-        // (Re)create swapchain.
+        DODO_ASSERT(m_PresentQueueIndex.has_value (), "Present queue not found!");
+        vkGetDeviceQueue(m_Device->GetVulkanDevice(), m_PresentQueueIndex.value(), 0, &m_PresentQueue);
         RecreateSwapchain();
+    }
+
+    void VulkanSwapchain::RecordTestCommands()
+    {
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+        if (vkBeginCommandBuffer(m_CommandBuffers.at(m_FrameIndex), &beginInfo) != VK_SUCCESS) {
+            throw std::runtime_error("failed to begin recording command buffer!");
+        }
+
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = m_RenderPass;
+        renderPassInfo.framebuffer = m_Framebuffers.at(m_ImageIndex);
+        renderPassInfo.renderArea.offset = {0, 0};
+        renderPassInfo.renderArea.extent = m_Extent;
+
+        VkClearValue clearColor = {{{1.0f, 0.6f, 0.3f, 1.0f}}};
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = &clearColor;
+
+        vkCmdBeginRenderPass(m_CommandBuffers.at(m_FrameIndex), &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = (float) m_Extent.width;
+        viewport.height = (float) m_Extent.height;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(m_CommandBuffers.at(m_FrameIndex), 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = m_Extent;
+        vkCmdSetScissor(m_CommandBuffers.at(m_FrameIndex), 0, 1, &scissor);
+
+        vkCmdEndRenderPass(m_CommandBuffers.at(m_FrameIndex));
+
+        if (vkEndCommandBuffer(m_CommandBuffers.at(m_FrameIndex)) != VK_SUCCESS) {
+            throw std::runtime_error("failed to record command buffer!");
+        }
     }
 
     void VulkanSwapchain::BeginFrame()
     {
         static constexpr uint64_t defaultFenceTimeout = std::numeric_limits<uint64_t>::max();
-        // Wait for the fence associated with the current frame to
-        // signal completion.
-        DODO_VK_RESULT(vkWaitForFences(m_Device->GetNativeDevice(),
+        // Wait for the fence associated with the current frame to signal completion.
+        DODO_VK_RESULT(vkWaitForFences(m_Device->GetVulkanDevice(),
                                        1,
                                        &m_WaitFences.at(m_FrameIndex),
                                        VK_TRUE,
-                                       defaultFenceTimeout));
+                                       defaultFenceTimeout))
 
-        // TODO(me): Release resources.
-        m_ImageIndex = AcquireNextImage();
-        DODO_VK_RESULT(vkResetCommandBuffer(m_CmdBuffers.at(m_FrameIndex), 0));
-        DODO_VK_RESULT(vkResetFences(m_Device->GetNativeDevice(), 1, &m_WaitFences.at(m_FrameIndex)));
+        // TODO: Release resources.
+        const VkResult result = AcquireNextImage(&m_ImageIndex);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            vkDeviceWaitIdle(m_Device->GetVulkanDevice());
+            RecreateSwapchain();
+            return;
+        }
+        else
+        {
+            DODO_VK_RESULT(result);
+        }
+
+        // Only reset the fence when submitting work to avoid a deadlock.
+        // Online: https://vulkan-tutorial.com/Drawing_a_triangle/Swap_chain_recreation
+        DODO_VK_RESULT(vkResetFences(m_Device->GetVulkanDevice(), 1, &m_WaitFences.at(m_FrameIndex)));
+        DODO_VK_RESULT(vkResetCommandBuffer(m_CommandBuffers.at(m_FrameIndex), 0));
+
+        RecordTestCommands();
     }
 
     void VulkanSwapchain::OnResize(uint32_t width, uint32_t height)
     {
-        m_Width  = width;
-        m_Height = height;
+        m_Width = width, m_Height = height;
         m_NeedsResize = true;
     }
 
     void VulkanSwapchain::Present()
     {
-        VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.pWaitDstStageMask = &waitStageMask;
         submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = &m_Semaphores.ImageAvailable;
+        submitInfo.pWaitSemaphores = &m_Semaphores.ImageAvailable.at(m_FrameIndex);
+        submitInfo.pWaitDstStageMask = waitStages;
         submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &m_Semaphores.RenderComplete;
-        submitInfo.pCommandBuffers = &m_CmdBuffers.at(m_FrameIndex);
+        submitInfo.pSignalSemaphores = &m_Semaphores.RenderComplete.at(m_FrameIndex);
         submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &m_CommandBuffers.at(m_FrameIndex);
         DODO_VK_RESULT(vkQueueSubmit(m_Device->GetGraphicsQueue(), 1, &submitInfo, m_WaitFences.at(m_FrameIndex)));
 
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        presentInfo.pNext = nullptr;
+        presentInfo.waitSemaphoreCount = 1;
+        presentInfo.pWaitSemaphores = &m_Semaphores.RenderComplete.at(m_FrameIndex);
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &m_Swapchain;
         presentInfo.pImageIndices = &m_ImageIndex;
-        presentInfo.pWaitSemaphores = &m_Semaphores.RenderComplete;
-        presentInfo.waitSemaphoreCount = 1;
-        VkResult result = pfnQueuePresentKHR(m_Device->GetGraphicsQueue(), &presentInfo);
+        const VkResult result = pfnQueuePresentKHR(m_Device->GetGraphicsQueue(), &presentInfo);
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_NeedsResize)
         {
             m_NeedsResize = false;
-            DODO_VK_RESULT(vkDeviceWaitIdle(m_Device->GetNativeDevice()));
+            vkDeviceWaitIdle(m_Device->GetVulkanDevice());
             RecreateSwapchain();
         }
         else
@@ -199,126 +248,170 @@ namespace Dodo {
 
     void VulkanSwapchain::Destroy()
     {
-        DODO_VK_RESULT(vkDeviceWaitIdle(m_Device->GetNativeDevice()));
-
-        // Destroy semaphore(s).
-        if (m_Semaphores.ImageAvailable)
+        vkDeviceWaitIdle(m_Device->GetVulkanDevice());
+        // Destroy semaphores & wait fences.
+        const uint32_t framesInFlight = Renderer::GetSettings().FramesInFlight;
+        for (size_t i = 0; i < framesInFlight; i++)
         {
-            vkDestroySemaphore(m_Device->GetNativeDevice(), m_Semaphores.ImageAvailable, nullptr);
-        }
-
-        if (m_Semaphores.RenderComplete)
-        {
-            vkDestroySemaphore(m_Device->GetNativeDevice(), m_Semaphores.RenderComplete, nullptr);
-        }
-
-        // Destroy wait fence(s).
-        for (auto waitFence : m_WaitFences)
-        {
-            vkDestroyFence(m_Device->GetNativeDevice(), waitFence, nullptr);
+            vkDestroySemaphore(m_Device->GetVulkanDevice(), m_Semaphores.ImageAvailable.at(i), nullptr);
+            vkDestroySemaphore(m_Device->GetVulkanDevice(), m_Semaphores.RenderComplete.at(i), nullptr);
+            vkDestroyFence(m_Device->GetVulkanDevice(), m_WaitFences.at(i), nullptr);
         }
 
         // Destroy command pool(s).
-        if (m_CmdPool)
+        if (m_CommandPool)
         {
-            vkDestroyCommandPool(m_Device->GetNativeDevice(), m_CmdPool, nullptr);
-        }
-
-        // Destroy framebuffers.
-        for (auto framebuffer : m_Framebuffers)
-        {
-            vkDestroyFramebuffer(m_Device->GetNativeDevice(), framebuffer, nullptr);
+            vkDestroyCommandPool(m_Device->GetVulkanDevice(), m_CommandPool, nullptr);
         }
 
         // Destroy render pass.
         if (m_RenderPass)
         {
-            vkDestroyRenderPass(m_Device->GetNativeDevice(), m_RenderPass, nullptr);
+            vkDestroyRenderPass(m_Device->GetVulkanDevice(), m_RenderPass, nullptr);
         }
 
-        // Destroy image views.
-        for (auto imageView : m_ImageViews)
+        // Destroy framebuffers & image views.
+        for (size_t i = 0; i < m_ImageCount; i++)
         {
-            vkDestroyImageView(m_Device->GetNativeDevice(), imageView, nullptr);
+            vkDestroyFramebuffer(m_Device->GetVulkanDevice(), m_Framebuffers.at(i), nullptr);
+            vkDestroyImageView(m_Device->GetVulkanDevice(), m_ImageViews.at(i), nullptr);
         }
 
         // Destroy swapchain.
         if (m_Swapchain)
         {
-            pfnDestroySwapchainKHR(m_Device->GetNativeDevice(), m_Swapchain, nullptr);
+            pfnDestroySwapchainKHR(m_Device->GetVulkanDevice(), m_Swapchain, nullptr);
         }
 
         vkDestroySurfaceKHR(m_Instance, m_Surface, nullptr);
-        DODO_VK_RESULT(vkDeviceWaitIdle(m_Device->GetNativeDevice()));
+        vkDeviceWaitIdle(m_Device->GetVulkanDevice());
     }
 
     void VulkanSwapchain::RecreateSwapchain()
     {
-        // Query support details & validate.
-        QuerySupportDetails();
-        DODO_ASSERT(AreSupportDetailsAdequate(), "Swapchain support details are not adequate!");
+        const VkPhysicalDevice physicalDevice = m_Device->GetPhysicalDevice()->GetVulkanPhysicalDevice();
+        // Get surface capabilities.
+        VkSurfaceCapabilitiesKHR surfaceCaps{};
+        pfnGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, m_Surface, &surfaceCaps);
 
-        m_SurfaceFormat = SelectSurfaceFormat();
-        m_PresentMode = SelectPresentMode();
-        m_Extent = SelectExtent();
-
-        const VkSurfaceCapabilitiesKHR& capabilities = m_SupportDetails.Capabilities;
-        m_ImageCount = capabilities.minImageCount + 1;
-        if ((capabilities.maxImageCount > 0) && (m_ImageCount > capabilities.maxImageCount))
+        // Get surface formats.
+        std::vector<VkSurfaceFormatKHR> formats{};
+        uint32_t formatCount = 0;
+        pfnGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, nullptr);
+        if (formatCount > 0)
         {
-            m_ImageCount = capabilities.maxImageCount;
+            formats.resize(formatCount);
+            pfnGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, formats.data());
         }
 
-        // Vulkan needs to know how the graphics & present queue
-        // will communicate when they don't share the same index.
-        VkSharingMode imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        std::vector<uint32_t> queueFamilyIndices{};
-        if (m_GraphicsQueueIndex != m_PresentQueueIndex.value())
+        // Get present modes.
+        std::vector<VkPresentModeKHR> modes{};
+        uint32_t modeCount = 0;
+        pfnGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &modeCount, nullptr);
+        if (modeCount > 0)
         {
-            imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-            queueFamilyIndices.push_back(m_GraphicsQueueIndex);
-            queueFamilyIndices.push_back(m_PresentQueueIndex.value());
+            modes.resize(modeCount);
+            pfnGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &modeCount, modes.data());
+        }
+        
+        const bool enableImGui = Application::GetCurrent().GetSpecs().EnableImGui;
+        // Select surface format & color space.
+        // Surface format has to be compatible with ImGui when enabled!
+        m_SurfaceFormat = formats.back();
+        VkSurfaceFormatKHR targetFormat{};
+        targetFormat.format = enableImGui ? VK_FORMAT_B8G8R8A8_UNORM : VK_FORMAT_B8G8R8A8_SRGB;
+        targetFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        for (const auto& format : formats)
+        {
+            if (format.format == targetFormat.format && format.colorSpace == targetFormat.colorSpace)
+            {
+                m_SurfaceFormat = format;
+            }
+        }
+
+        // Select present mode.
+        // Present mode has to be compatible with ImGui when enabled!
+        m_PresentMode = modes.back();
+        const VkPresentModeKHR targetMode = enableImGui ? VK_PRESENT_MODE_FIFO_KHR : Utils::ConvertToVkPresentMode(Renderer::GetSettings().VSyncMode);
+        for (const auto mode : modes)
+        {
+            if (mode == targetMode)
+            {
+                m_PresentMode = mode;
+            }
+        }
+        
+        // Select extent.
+        m_Extent = surfaceCaps.currentExtent;
+        if (surfaceCaps.currentExtent.width == std::numeric_limits<uint32_t>::max())
+        {
+            VkExtent2D extent{};
+            extent.width  = std::clamp(m_Width , surfaceCaps.minImageExtent.width , surfaceCaps.maxImageExtent.width );
+            extent.height = std::clamp(m_Height, surfaceCaps.minImageExtent.height, surfaceCaps.maxImageExtent.height);
+            m_Extent = extent;
+        }
+
+        // Incompatible capabilities / extent.
+        if (m_Extent.width == 0 || m_Extent.height == 0)
+        {
+            return;
+        }
+
+        // Get image count.
+        m_ImageCount = surfaceCaps.minImageCount + 1;
+        if ((surfaceCaps.maxImageCount > 0) && (m_ImageCount > surfaceCaps.maxImageCount))
+        {
+            m_ImageCount = surfaceCaps.maxImageCount;
         }
 
         // Create swapchain.
         VkSwapchainKHR oldSwapchain = m_Swapchain;
-        VkSwapchainCreateInfoKHR swapchainCreateInfo{};
-        swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        swapchainCreateInfo.surface = m_Surface;
-        swapchainCreateInfo.minImageCount = m_ImageCount;
-        swapchainCreateInfo.imageFormat = m_SurfaceFormat.format;
-        swapchainCreateInfo.imageColorSpace = m_SurfaceFormat.colorSpace;
-        swapchainCreateInfo.imageExtent = m_Extent;
-        swapchainCreateInfo.imageArrayLayers = 1;
-        swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        swapchainCreateInfo.imageSharingMode = imageSharingMode;
-        swapchainCreateInfo.queueFamilyIndexCount = static_cast<uint32_t>(queueFamilyIndices.size());
-        swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
-        swapchainCreateInfo.preTransform = m_SupportDetails.Capabilities.currentTransform;
-        swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        swapchainCreateInfo.presentMode = m_PresentMode;
-        swapchainCreateInfo.clipped = VK_TRUE;
-        swapchainCreateInfo.oldSwapchain = oldSwapchain;
-        DODO_VK_RESULT(pfnCreateSwapchainKHR(m_Device->GetNativeDevice(), &swapchainCreateInfo, nullptr, &m_Swapchain));
-        if (oldSwapchain)
         {
-            pfnDestroySwapchainKHR(m_Device->GetNativeDevice(), oldSwapchain, nullptr);
+            VkSwapchainCreateInfoKHR createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+            createInfo.surface = m_Surface;
+            createInfo.minImageCount = m_ImageCount;
+            createInfo.imageFormat = m_SurfaceFormat.format;
+            createInfo.imageColorSpace = m_SurfaceFormat.colorSpace;
+            createInfo.imageExtent = m_Extent;
+            createInfo.imageArrayLayers = 1;
+            createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            // Images can be used across multiple queue families without explicit ownership transfers.
+            // Online: https://vulkan-tutorial.com/Drawing_a_triangle/Presentation/Swap_chain
+            if (m_GraphicsQueueIndex != m_PresentQueueIndex.value())
+            {
+                const std::vector<uint32_t> queueFamilyIndices = { m_GraphicsQueueIndex, m_PresentQueueIndex.value() };
+                createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+                createInfo.queueFamilyIndexCount = (uint32_t)queueFamilyIndices.size();
+                createInfo.pQueueFamilyIndices = queueFamilyIndices.data();
+            }
+            
+            createInfo.preTransform = surfaceCaps.currentTransform;
+            createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+            createInfo.presentMode = m_PresentMode;
+            createInfo.clipped = VK_TRUE;
+            createInfo.oldSwapchain = oldSwapchain;
+            DODO_VK_RESULT(pfnCreateSwapchainKHR(m_Device->GetVulkanDevice(), &createInfo, nullptr, &m_Swapchain));
+            if (oldSwapchain)
+            {
+                pfnDestroySwapchainKHR(m_Device->GetVulkanDevice(), oldSwapchain, nullptr);
+            }
         }
 
         // Create images & views.
         for (auto imageView : m_ImageViews)
         {
-            vkDestroyImageView(m_Device->GetNativeDevice(), imageView, nullptr);
+            vkDestroyImageView(m_Device->GetVulkanDevice(), imageView, nullptr);
         }
 
         m_Images.clear();
         m_ImageViews.clear();
 
-        pfnGetSwapchainImagesKHR(m_Device->GetNativeDevice(), m_Swapchain, &m_ImageCount, nullptr);
+        pfnGetSwapchainImagesKHR(m_Device->GetVulkanDevice(), m_Swapchain, &m_ImageCount, nullptr);
         m_Images.resize(m_ImageCount);
         m_ImageViews.resize(m_Images.size());
-        pfnGetSwapchainImagesKHR(m_Device->GetNativeDevice(), m_Swapchain, &m_ImageCount, m_Images.data());
-
+        pfnGetSwapchainImagesKHR(m_Device->GetVulkanDevice(), m_Swapchain, &m_ImageCount, m_Images.data());
         for (size_t i = 0; i < m_Images.size(); i++)
         {
             VkImageViewCreateInfo createInfo{};
@@ -335,62 +428,59 @@ namespace Dodo {
             createInfo.subresourceRange.levelCount = 1;
             createInfo.subresourceRange.baseArrayLayer = 0;
             createInfo.subresourceRange.layerCount = 1;
-            DODO_VK_RESULT(vkCreateImageView(m_Device->GetNativeDevice(), &createInfo, nullptr, &m_ImageViews.at(i)));
+            DODO_VK_RESULT(vkCreateImageView(m_Device->GetVulkanDevice(), &createInfo, nullptr, &m_ImageViews.at(i)));
         }
-
+        
         // Create render pass.
-        if (m_RenderPass)
         {
-            vkDestroyRenderPass(m_Device->GetNativeDevice(), m_RenderPass, nullptr);
+            if (m_RenderPass)
+            {
+                vkDestroyRenderPass(m_Device->GetVulkanDevice(), m_RenderPass, nullptr);
+            }
+
+            VkAttachmentDescription colorAttachment{};
+            colorAttachment.format = m_SurfaceFormat.format;
+            colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+            colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            colorAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            VkAttachmentReference attachmentRef{};
+            attachmentRef.attachment = 0;
+            attachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            VkSubpassDescription subpass{};
+            subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            subpass.colorAttachmentCount = 1;
+            subpass.pColorAttachments = &attachmentRef;
+            VkSubpassDependency dependency{};
+            dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+            dependency.dstSubpass = 0;
+            dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dependency.srcAccessMask = 0;
+            dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            VkRenderPassCreateInfo createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+            createInfo.attachmentCount = 1;
+            createInfo.pAttachments = &colorAttachment;
+            createInfo.subpassCount = 1;
+            createInfo.pSubpasses = &subpass;
+            createInfo.dependencyCount = 1;
+            createInfo.pDependencies = &dependency;
+            DODO_VK_RESULT(vkCreateRenderPass(m_Device->GetVulkanDevice(), &createInfo, nullptr, &m_RenderPass));
         }
-
-        VkAttachmentDescription colorAttachment{};
-        colorAttachment.format = m_SurfaceFormat.format;
-        colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-        colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-        colorAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-        VkAttachmentReference attachmentRef{};
-        attachmentRef.attachment = 0;
-        attachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-        VkSubpassDescription subpass{};
-        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-        subpass.colorAttachmentCount = 1;
-        subpass.pColorAttachments = &attachmentRef;
-
-        VkSubpassDependency dependency{};
-        dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.srcAccessMask = 0;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        VkRenderPassCreateInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.attachmentCount = 1;
-        renderPassInfo.pAttachments = &colorAttachment;
-        renderPassInfo.subpassCount = 1;
-        renderPassInfo.pSubpasses = &subpass;
-        renderPassInfo.dependencyCount = 1;
-        renderPassInfo.pDependencies = &dependency;
-        DODO_VK_RESULT(vkCreateRenderPass(m_Device->GetNativeDevice(), &renderPassInfo, nullptr, &m_RenderPass));
 
         // Create framebuffer(s)
         for (auto framebuffer : m_Framebuffers)
         {
-            vkDestroyFramebuffer(m_Device->GetNativeDevice(), framebuffer, nullptr);
+            vkDestroyFramebuffer(m_Device->GetVulkanDevice(), framebuffer, nullptr);
         }
 
         m_Framebuffers.clear();
         m_Framebuffers.resize(m_ImageViews.size());
-
-        for (size_t i = 0; i < m_ImageViews.size(); i++)
+        for (size_t i = 0; i < m_ImageCount; i++)
         {
             VkImageView attachments[] = { m_ImageViews.at(i) };
             VkFramebufferCreateInfo framebufferInfo{};
@@ -401,168 +491,84 @@ namespace Dodo {
             framebufferInfo.width  = m_Extent.width;
             framebufferInfo.height = m_Extent.height;
             framebufferInfo.layers = 1;
-            DODO_VK_RESULT(vkCreateFramebuffer(m_Device->GetNativeDevice(), &framebufferInfo, nullptr, &m_Framebuffers.at(i)));
+            DODO_VK_RESULT(vkCreateFramebuffer(m_Device->GetVulkanDevice(), &framebufferInfo, nullptr, &m_Framebuffers.at(i)));
         }
 
         // Create command pool(s) & buffers.
-        if (m_CmdPool)
         {
-            vkDestroyCommandPool(m_Device->GetNativeDevice(), m_CmdPool, nullptr);
+            if (m_CommandPool)
+            {
+                vkDestroyCommandPool(m_Device->GetVulkanDevice(), m_CommandPool, nullptr);
+            }
+
+            VkCommandPoolCreateInfo createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            createInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+            createInfo.queueFamilyIndex = m_GraphicsQueueIndex;
+            DODO_VK_RESULT(vkCreateCommandPool(m_Device->GetVulkanDevice(), &createInfo, nullptr, &m_CommandPool));
         }
 
-        VkCommandPoolCreateInfo cmdPoolInfo{};
-        cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        cmdPoolInfo.queueFamilyIndex = m_GraphicsQueueIndex;
-        DODO_VK_RESULT(vkCreateCommandPool(m_Device->GetNativeDevice(), &cmdPoolInfo, nullptr, &m_CmdPool));
-
-        m_CmdBuffers.clear();
+        m_CommandBuffers.clear();
         const uint32_t framesInFlight = Renderer::GetSettings().FramesInFlight;
-        m_CmdBuffers.resize(framesInFlight);
-
-        for (size_t i = 0; i < framesInFlight; i++)
+        m_CommandBuffers.resize(framesInFlight);
+        for (size_t i = 0; i < m_CommandBuffers.size(); i++)
         {
             VkCommandBufferAllocateInfo allocInfo{};
             allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocInfo.commandPool = m_CmdPool;
+            allocInfo.commandPool = m_CommandPool;
             allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
             allocInfo.commandBufferCount = 1;
-            DODO_VK_RESULT(vkAllocateCommandBuffers(m_Device->GetNativeDevice(), &allocInfo, &m_CmdBuffers.at(i)));
+            DODO_VK_RESULT(vkAllocateCommandBuffers(m_Device->GetVulkanDevice(), &allocInfo, &m_CommandBuffers.at(i)));
         }
-
+        
         // Create semaphores.
-        if (m_Semaphores.ImageAvailable)
+        for (auto semaphore : m_Semaphores.ImageAvailable)
         {
-            vkDestroySemaphore(m_Device->GetNativeDevice(), m_Semaphores.ImageAvailable, nullptr);
+            vkDestroySemaphore(m_Device->GetVulkanDevice(), semaphore, nullptr);
         }
 
-        if (m_Semaphores.RenderComplete)
+        for (auto semaphore : m_Semaphores.RenderComplete)
         {
-            vkDestroySemaphore(m_Device->GetNativeDevice(), m_Semaphores.RenderComplete, nullptr);
+            vkDestroySemaphore(m_Device->GetVulkanDevice(), semaphore, nullptr);
         }
 
-        VkSemaphoreCreateInfo semaphoreInfo{};
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-        DODO_VK_RESULT(vkCreateSemaphore(m_Device->GetNativeDevice(), &semaphoreInfo, nullptr, &m_Semaphores.ImageAvailable));
-        DODO_VK_RESULT(vkCreateSemaphore(m_Device->GetNativeDevice(), &semaphoreInfo, nullptr, &m_Semaphores.RenderComplete));
+        m_Semaphores.ImageAvailable.clear();
+        m_Semaphores.RenderComplete.clear();
+        m_Semaphores.ImageAvailable.resize(framesInFlight);
+        m_Semaphores.RenderComplete.resize(m_Semaphores.ImageAvailable.size());
+        for (size_t i = 0; i < framesInFlight; i++)
+        {
+            VkSemaphoreCreateInfo createInfo{};
+            createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            DODO_VK_RESULT(vkCreateSemaphore(m_Device->GetVulkanDevice(), &createInfo, nullptr, &m_Semaphores.ImageAvailable.at(i)));
+            DODO_VK_RESULT(vkCreateSemaphore(m_Device->GetVulkanDevice(), &createInfo, nullptr, &m_Semaphores.RenderComplete.at(i)));
+        }
 
         // Create wait fences.
         for (auto waitFence : m_WaitFences)
         {
-            vkDestroyFence(m_Device->GetNativeDevice(), waitFence, nullptr);
+            vkDestroyFence(m_Device->GetVulkanDevice(), waitFence, nullptr);
         }
 
         m_WaitFences.clear();
         m_WaitFences.resize(framesInFlight);
-
         for (size_t i = 0; i < framesInFlight; i++)
         {
             VkFenceCreateInfo fenceInfo{};
             fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
             fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-            DODO_VK_RESULT(vkCreateFence(m_Device->GetNativeDevice(), &fenceInfo, nullptr, &m_WaitFences.at(i)));
+            DODO_VK_RESULT(vkCreateFence(m_Device->GetVulkanDevice(), &fenceInfo, nullptr, &m_WaitFences.at(i)));
         }
     }
 
-    void VulkanSwapchain::QuerySupportDetails()
+    VkResult VulkanSwapchain::AcquireNextImage(uint32_t* imageIndex)
     {
-        VkPhysicalDevice videoAdapter = m_Device->GetPhysicalDevice()->GetNativePhysicalDevice();
-
-        // Get capabilities.
-        pfnGetPhysicalDeviceSurfaceCapabilitiesKHR(videoAdapter, m_Surface, &m_SupportDetails.Capabilities);
-
-        // Get surface formats.
-        uint32_t formatCount = 0;
-        pfnGetPhysicalDeviceSurfaceFormatsKHR(videoAdapter, m_Surface, &formatCount, nullptr);
-        if (formatCount > 0)
-        {
-            m_SupportDetails.SurfaceFormats.resize(formatCount);
-            pfnGetPhysicalDeviceSurfaceFormatsKHR(videoAdapter, m_Surface, &formatCount, m_SupportDetails.SurfaceFormats.data());
-        }
-
-        // Get present modes.
-        uint32_t modeCount = 0;
-        pfnGetPhysicalDeviceSurfacePresentModesKHR(videoAdapter, m_Surface, &modeCount, nullptr);
-        if (modeCount > 0)
-        {
-            m_SupportDetails.PresentModes.resize(modeCount);
-            pfnGetPhysicalDeviceSurfacePresentModesKHR(videoAdapter, m_Surface, &modeCount, m_SupportDetails.PresentModes.data());
-        }
-    }
-
-    bool VulkanSwapchain::AreSupportDetailsAdequate() const
-    {
-        return !m_SupportDetails.SurfaceFormats.empty() && !m_SupportDetails.PresentModes.empty();
-    }
-
-    VkSurfaceFormatKHR VulkanSwapchain::SelectSurfaceFormat() const
-    {
-        VkSurfaceFormatKHR requestedFormat{};
-        requestedFormat.format     = VK_FORMAT_B8G8R8A8_SRGB;
-        requestedFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-        // Target surface format has to be compatible with ImGui when enabled!
-        if (Application::GetCurrent().GetSpecs().EnableImGui)
-        {
-            requestedFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
-        }
-
-        for (const auto& format : m_SupportDetails.SurfaceFormats)
-        {
-            if (format.format == requestedFormat.format && format.colorSpace == requestedFormat.colorSpace)
-            {
-                return format;
-            }
-        }
-
-        // Get any surface format.
-        return m_SupportDetails.SurfaceFormats[0];
-    }
-
-    VkPresentModeKHR VulkanSwapchain::SelectPresentMode() const
-    {
-        VkPresentModeKHR requestedMode = Utils::ConvertToVkPresentMode(Renderer::GetSettings().VSyncMode);
-        // Target present mode has to be compatible with ImGui when enabled!
-        if (Application::GetCurrent().GetSpecs().EnableImGui)
-        {
-            requestedMode = VK_PRESENT_MODE_FIFO_KHR;
-        }
-
-        for (VkPresentModeKHR mode : m_SupportDetails.PresentModes)
-        {
-            if (mode == requestedMode)
-            {
-                return mode;
-            }
-        }
-
-        // Get any present mode.
-        return m_SupportDetails.PresentModes[0];
-    }
-
-    VkExtent2D VulkanSwapchain::SelectExtent() const
-    {
-        const VkSurfaceCapabilitiesKHR& capabilities = m_SupportDetails.Capabilities;
-        if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
-        {
-            return capabilities.currentExtent;
-        }
-
-        VkExtent2D extent{};
-        extent.width  = std::clamp(m_Width , capabilities.minImageExtent.width , capabilities.maxImageExtent.width );
-        extent.height = std::clamp(m_Height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-        return extent;
-    }
-
-    uint32_t VulkanSwapchain::AcquireNextImage()
-    {
-        uint32_t imageIndex = 0;
-        DODO_VK_RESULT(pfnAcquireNextImageKHR(m_Device->GetNativeDevice(),
-                                              m_Swapchain,
-                                              UINT64_MAX,
-                                              m_Semaphores.ImageAvailable,
-                                              nullptr,
-                                              &imageIndex));
-        return imageIndex;
+        return pfnAcquireNextImageKHR(m_Device->GetVulkanDevice(),
+                                      m_Swapchain,
+                                      UINT64_MAX,
+                                      m_Semaphores.ImageAvailable.at(m_FrameIndex),
+                                      nullptr,
+                                      imageIndex);
     }
 
 }
