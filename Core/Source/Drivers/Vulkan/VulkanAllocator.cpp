@@ -1,4 +1,5 @@
 #include "pch.h"
+#define VMA_IMPLEMENTATION
 #include "VulkanAllocator.h"
 #include "Vulkan.h"
 #include "VulkanContext.h"
