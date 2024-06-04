@@ -25,7 +25,8 @@ namespace Dodo {
         Stopwatch frameStopwatch{};
         frameStopwatch.Start();
 
-        
+        std::vector<Func<void()>> funcs{};
+
         while (m_IsRunning)
         {
             // Wait for RenderThread to finish [N - 2].
@@ -34,6 +35,8 @@ namespace Dodo {
                 m_RenderThread.BlockUntilRenderComplete();
                 m_PerformanceStats.MainThreadWaitTime = waitStopwatch.GetAsMilliseconds();
             }
+
+            funcs.push_back([this]() { LOG_CORE_WARNING("Wait time: {}", m_PerformanceStats.MainThreadWaitTime); });
 
             m_Window->ProcessEvents();
 
@@ -72,6 +75,9 @@ namespace Dodo {
                 m_PerformanceStats.FrameRate = 0;
                 frameStopwatch.Reset();
             }
+
+            for (auto& f : funcs)
+                f.Invoke();
         }
 
         Close();

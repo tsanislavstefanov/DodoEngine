@@ -1,11 +1,5 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-
-#include "Core/Core.h"
-
 namespace Dodo {
 
     ////////////////////////////////////////////////////////////////
@@ -40,15 +34,24 @@ namespace Dodo {
             , Size(size)
         {}
 
-        operator bool() const { return (Data != nullptr) && (Size > 0); }
+        operator bool() const
+        {
+            return (Data != nullptr) && (Size > 0);
+        }
 
         void Allocate(size_t size);
 
         template<typename T>
-        T* As() { return (T*)Data; }
+        T* As()
+        {
+            return (T*)Data;
+        }
 
         template<typename T>
-        T* As() const { return (T*)Data; }
+        T* As() const
+        {
+            return (T*)Data;
+        }
 
         void Release();
     };

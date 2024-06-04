@@ -1,33 +1,14 @@
 #pragma once
 
+#include "Bindings/Func.h"
+
 namespace Dodo {
 
     ////////////////////////////////////////////////////////////////
-    // RENDER COMMAND //////////////////////////////////////////////
+    // RENDER FUNC /////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    using RenderCommand = void(*)(void*);
-
-    ////////////////////////////////////////////////////////////////
-    // RENDER COMMAND CHUNK ////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    class RenderCommandChunk
-    {
-    public:
-        RenderCommandChunk();
-
-        ~RenderCommandChunk();
-
-        void* Allocate(RenderCommand cmd, size_t size);
-        void  Execute();
-    private:
-        void  Reset();
-
-        uint8_t* m_Data = nullptr;
-        uint8_t* m_CurrentPosition = nullptr;
-        uint64_t m_CommandCount = 0;
-    };
+    using RenderFunc = Func<void(), sizeof(void*) + sizeof(uint64_t)>;
 
     ////////////////////////////////////////////////////////////////
     // RENDER COMMAND QUEUE ////////////////////////////////////////
@@ -38,26 +19,20 @@ namespace Dodo {
     public:
         RenderCommandQueue() = default;
 
-        template<typename Job>
-        void Submit(Job&& job)
+        uint32_t GetCommandCount() const
         {
-            RenderCommand cmd = [](void* memory)
-            {
-                auto job = (Job*)memory;
-                (*job)();
-
-                job->~Job();
-            };
-
-            new (Allocate(cmd, sizeof(Job))) Job(std::forward<Job>(job));
+            return m_Commands.size();
         }
 
-        void  Execute();
-    private:
-        RenderCommandChunk& GetCurrentChunk();
-        void* Allocate(RenderCommand cmd, size_t size);
+        template<typename Command>
+        void Submit(Command&& command)
+        {
+            m_Commands.push_back(std::move(command));
+        }
 
-        std::deque<RenderCommandChunk> m_Chunks{};
+        void Execute();
+    private:
+        std::deque<RenderFunc> m_Commands{};
     };
 
 }

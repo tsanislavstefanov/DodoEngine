@@ -85,6 +85,6 @@ namespace Dodo {
     // EVENT CALLBACK //////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    using EventCallback = Func<void(Event&)>;
+    using EventCallback = SmallFunc<void(Event&)>;
 
 }

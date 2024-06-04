@@ -1,6 +1,5 @@
 #pragma once
 
-#include <type_traits>
 #include <utility>
 
 namespace Dodo {
@@ -9,11 +8,11 @@ namespace Dodo {
     // FUNC ////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    template<typename>
+    template<typename, size_t>
     class Func {};
 
-    template<typename Result, typename... Args>
-    class Func<Result(Args...)>
+    template<size_t StackSize, typename Result, typename... Args>
+    class Func<Result(Args...), StackSize>
     {
     public:
         Func() = default;
@@ -29,16 +28,6 @@ namespace Dodo {
             return m_Invocation.Callback != nullptr;
         }
 
-        bool operator==(const Func& other) const
-        {
-            return m_Invocation.Data == other.m_Invocation.Data;
-        }
-
-        bool operator!=(const Func& other) const
-        {
-            return !((*this) == other);
-        }
-
         Result operator()(Args... args) const
         {
             return Invoke(std::forward<Args>(args)...);
@@ -47,6 +36,7 @@ namespace Dodo {
         template<typename Lambda>
         void Connect(Lambda&& lambda)
         {
+            DODO_ASSERT(sizeof(Lambda) <= StackSize, "Function too complex!");
             new (&m_Invocation.Data) Lambda(std::forward<Lambda>(lambda));
             m_Invocation.Callback = [](const Storage& data, Args&&... args) -> Result
             {
@@ -67,10 +57,14 @@ namespace Dodo {
 
     private:
         ////////////////////////////////////////////////////////////
-        // STORAGE /////////////////////////////////////////////////
+        // ALIGNED STORAGE /////////////////////////////////////////
         ////////////////////////////////////////////////////////////
 
-        using Storage = std::aligned_storage<sizeof(void*), alignof(void*)>;
+        template<size_t Align = alignof(void*)>
+        struct AlignedStorage
+        {
+            alignas(Align) uint8_t Stack[StackSize]{};
+        };
 
         ////////////////////////////////////////////////////////////
         // INVOCATION //////////////////////////////////////////////
@@ -78,7 +72,7 @@ namespace Dodo {
 
         struct Invocation
         {
-            Storage Data{};
+            AlignedStorage Data{};
 
             ////////////////////////////////////////////////////////
             // STUB ////////////////////////////////////////////////
@@ -90,5 +84,12 @@ namespace Dodo {
 
         Invocation m_Invocation{};
     };
+
+    ////////////////////////////////////////////////////////////////
+    // SMALL FUNC //////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    template<typename Result, typename... Args>
+    using SmallFunc = Func<Result(Args...), sizeof(void*)>;
 
 }
