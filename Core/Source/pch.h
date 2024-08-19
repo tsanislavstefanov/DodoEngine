@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 
 ////////////////////////////////////////////////////////////////
@@ -18,7 +19,10 @@
 #include <condition_variable>
 #include <deque>
 #include <iostream>
+#include <filesystem>
 #include <format>
+#include <fstream>
+#include <functional>
 #include <limits>
 #include <map>
 #include <mutex>
@@ -35,7 +39,7 @@
 
 #include "Core/Core.h"
 #include "Diagnostics/Stopwatch.h"
-#include "Memory/Buffer.h"
+#include "Memory/ByteBuffer.h"
 #include "Memory/Ref.h"
 
 ////////////////////////////////////////////////////////////////

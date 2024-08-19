@@ -1,8 +1,9 @@
 #include "pch.h"
 #define VMA_IMPLEMENTATION
 #include "VulkanAllocator.h"
-#include "Vulkan.h"
-#include "VulkanContext.h"
+#include "VulkanCommon.h"
+#include "VulkanDevice.h"
+#include "VulkanRenderContext.h"
 
 namespace Dodo {
 
@@ -15,13 +16,14 @@ namespace Dodo {
     void VulkanAllocator::Init()
     {
         s_Data = new VulkanAllocatorData();
+        const Ref<VulkanDevice>& device = VulkanRenderContext::GetCurrentDevice();
 
-        const auto& device = VulkanContext::GetCurrentDevice();
+        // Create (V)ulkan (M)emory (A)llocator.
         VmaAllocatorCreateInfo createInfo{};
-        createInfo.vulkanApiVersion = VulkanContext::GetCurrent().GetVulkanApiVersion();
-        createInfo.instance         = VulkanContext::GetCurrentInstance();
         createInfo.physicalDevice   = device->GetPhysicalDevice()->GetVulkanPhysicalDevice();
         createInfo.device           = device->GetVulkanDevice();
+        createInfo.instance         = VulkanRenderContext::GetVulkanInstance();
+        createInfo.vulkanApiVersion = VulkanRenderContext::GetVulkanApiVersion();
         DODO_VK_RESULT(vmaCreateAllocator(&createInfo, &s_Data->Allocator));
     }
 
@@ -35,7 +37,7 @@ namespace Dodo {
     VmaAllocation VulkanAllocator::AllocateBuffer(VkBufferCreateInfo bufferCreateInfo, VmaMemoryUsage usage, VkBuffer *buffer)
     {
         VmaAllocationCreateInfo createInfo{};
-        createInfo.usage = usage;
+        createInfo.usage         = usage;
         VmaAllocation allocation = nullptr;
         DODO_VK_RESULT(vmaCreateBuffer(s_Data->Allocator, &bufferCreateInfo, &createInfo, buffer, &allocation, nullptr));
         return allocation;
@@ -49,6 +51,11 @@ namespace Dodo {
     void VulkanAllocator::UnmapMemory(VmaAllocation allocation)
     {
         vmaUnmapMemory(s_Data->Allocator, allocation);
+    }
+
+    void VulkanAllocator::Free(VmaAllocation allocation)
+    {
+        vmaFreeMemory(s_Data->Allocator, allocation);
     }
 
 }

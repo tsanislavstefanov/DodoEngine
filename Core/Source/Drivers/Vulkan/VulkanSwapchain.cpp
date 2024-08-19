@@ -5,11 +5,11 @@
 #   include <vulkan/vulkan_win32.h>
 #endif
 
-#include "Vulkan.h"
+#include "VulkanCommon.h"
 #include "VulkanDevice.h"
-#include "VulkanContext.h"
+#include "VulkanRenderContext.h"
 #include "Core/Application.h"
-#include "Renderer/Renderer.h"
+#include "Core/Window.h"
 
 namespace Dodo {
 
@@ -38,10 +38,10 @@ namespace Dodo {
         {
             switch (vsyncMode)
             {
-                case VSyncMode::Disable: return VK_PRESENT_MODE_IMMEDIATE_KHR;
-                case VSyncMode::Enable:  return VK_PRESENT_MODE_FIFO_KHR;
-                case VSyncMode::Mailbox: return VK_PRESENT_MODE_MAILBOX_KHR;
-                default: DODO_ASSERT(false, "V-Sync mode not supported!");
+                case VSyncMode::Disable : return VK_PRESENT_MODE_IMMEDIATE_KHR;
+                case VSyncMode::Enable  : return VK_PRESENT_MODE_FIFO_KHR;
+                case VSyncMode::Mailbox : return VK_PRESENT_MODE_MAILBOX_KHR;
+                default                 : DODO_ASSERT(false, "V-Sync mode not supported!");
             }
 
             return VK_PRESENT_MODE_MAX_ENUM_KHR;
@@ -50,7 +50,7 @@ namespace Dodo {
     }
 
     ////////////////////////////////////////////////////////////////
-    // VULKAN SWAPCHAIN ////////////////////////////////////////////
+    // VULKAN SWAPCHAIN DATA ///////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
     static PFN_vkGetPhysicalDeviceSurfaceSupportKHR      pfnGetPhysicalDeviceSurfaceSupportKHR      = nullptr;
@@ -64,14 +64,19 @@ namespace Dodo {
     static PFN_vkAcquireNextImageKHR   pfnAcquireNextImageKHR   = nullptr;
     static PFN_vkQueuePresentKHR       pfnQueuePresentKHR       = nullptr;
 
+    ////////////////////////////////////////////////////////////////
+    // VULKAN SWAPCHAIN ////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
 
-    VulkanSwapchain::VulkanSwapchain(void* windowHandle, uint32_t width, uint32_t height)
-        : m_Width (width )
-        , m_Height(height)
+
+    VulkanSwapchain::VulkanSwapchain()
     {
-        m_Instance = VulkanContext::GetCurrentInstance();
-        m_Device   = VulkanContext::GetCurrentDevice();
-        m_Surface  = Utils::CreatePlatformSurface(windowHandle, m_Instance);
+        const Ref<Window>& targetWindow = Application::GetCurrent().GetWindow();
+        m_Width    = targetWindow->GetWidth ();
+        m_Height   = targetWindow->GetHeight();
+        m_Instance = VulkanRenderContext::GetVulkanInstance();
+        m_Device   = VulkanRenderContext::GetCurrentDevice();
+        m_Surface  = Utils::CreatePlatformSurface(targetWindow->GetHandle(), m_Instance);
 
         GET_VK_INSTANCE_PROC_ADDR(m_Instance, GetPhysicalDeviceSurfaceCapabilitiesKHR);
         GET_VK_INSTANCE_PROC_ADDR(m_Instance, GetPhysicalDeviceSurfaceFormatsKHR);
@@ -84,7 +89,7 @@ namespace Dodo {
         GET_VK_DEVICE_PROC_ADDR(m_Device->GetVulkanDevice(), AcquireNextImageKHR);
         GET_VK_DEVICE_PROC_ADDR(m_Device->GetVulkanDevice(), QueuePresentKHR);
 
-        const auto& physicalDevice = m_Device->GetPhysicalDevice();
+        const Ref<VulkanPhysicalDevice>& physicalDevice = m_Device->GetPhysicalDevice();
         m_GraphicsQueueIndex = physicalDevice->GetQueueFamilyIndices().Graphics.value();
 
         uint32_t queueCount = 0;
@@ -173,7 +178,7 @@ namespace Dodo {
         }
     }
 
-    void VulkanSwapchain::BeginFrame()
+    void VulkanSwapchain::BeginFrame_RenderThread()
     {
         static constexpr uint64_t defaultFenceTimeout = std::numeric_limits<uint64_t>::max();
         // Wait for the fence associated with the current frame to signal completion.
@@ -187,7 +192,7 @@ namespace Dodo {
         const VkResult result = AcquireNextImage(&m_ImageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
-            vkDeviceWaitIdle(m_Device->GetVulkanDevice());
+            DODO_VK_RESULT(vkDeviceWaitIdle(m_Device->GetVulkanDevice()));
             RecreateSwapchain();
             return;
         }
@@ -204,34 +209,37 @@ namespace Dodo {
         RecordTestCommands();
     }
 
-    void VulkanSwapchain::OnResize(uint32_t width, uint32_t height)
+    void VulkanSwapchain::OnResize_RenderThread(uint32_t width, uint32_t height)
     {
         m_Width = width, m_Height = height;
         m_NeedsResize = true;
     }
 
-    void VulkanSwapchain::Present()
+    void VulkanSwapchain::Present_RenderThread()
     {
-        const VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        const VkPipelineStageFlags waitStage = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
         VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = &m_Semaphores.ImageAvailable.at(m_FrameIndex);
-        submitInfo.pWaitDstStageMask = waitStages;
+        submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.waitSemaphoreCount   = 1;
+        submitInfo.pWaitSemaphores      = &m_ImageAvailable.at(m_FrameIndex);
+        submitInfo.pWaitDstStageMask    = &waitStage;
         submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &m_Semaphores.RenderComplete.at(m_FrameIndex);
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &m_CommandBuffers.at(m_FrameIndex);
-        DODO_VK_RESULT(vkQueueSubmit(m_Device->GetGraphicsQueue(), 1, &submitInfo, m_WaitFences.at(m_FrameIndex)));
+        submitInfo.pSignalSemaphores    = &m_RenderComplete.at(m_FrameIndex);
+        submitInfo.commandBufferCount   = 1;
+        submitInfo.pCommandBuffers      = &m_CommandBuffers.at(m_FrameIndex);
+        DODO_VK_RESULT(vkQueueSubmit(m_Device->GetGraphicsVulkanQueue(),
+                                     1,
+                                     &submitInfo,
+                                     m_WaitFences.at(m_FrameIndex)));
 
         VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+        presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &m_Semaphores.RenderComplete.at(m_FrameIndex);
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = &m_Swapchain;
-        presentInfo.pImageIndices = &m_ImageIndex;
-        const VkResult result = pfnQueuePresentKHR(m_Device->GetGraphicsQueue(), &presentInfo);
+        presentInfo.pWaitSemaphores    = &m_RenderComplete.at(m_FrameIndex);
+        presentInfo.swapchainCount     = 1;
+        presentInfo.pSwapchains        = &m_Swapchain;
+        presentInfo.pImageIndices      = &m_ImageIndex;
+        const VkResult result          = pfnQueuePresentKHR(m_Device->GetGraphicsVulkanQueue(), &presentInfo);
         if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_NeedsResize)
         {
             m_NeedsResize = false;
@@ -243,18 +251,20 @@ namespace Dodo {
             DODO_VK_RESULT(result);
         }
 
-        m_FrameIndex = (m_FrameIndex + 1) % Renderer::GetSettings().FramesInFlight;
+        const auto& app = Application::GetCurrent();
+        m_FrameIndex = (m_FrameIndex + 1) % app.GetSpecs().RenderSettings.ConcurrentFrameCount;
     }
 
     void VulkanSwapchain::Destroy()
     {
         vkDeviceWaitIdle(m_Device->GetVulkanDevice());
         // Destroy semaphores & wait fences.
-        const uint32_t framesInFlight = Renderer::GetSettings().FramesInFlight;
+        const auto& app = Application::GetCurrent();
+        const uint32_t framesInFlight = app.GetSpecs().RenderSettings.ConcurrentFrameCount;
         for (size_t i = 0; i < framesInFlight; i++)
         {
-            vkDestroySemaphore(m_Device->GetVulkanDevice(), m_Semaphores.ImageAvailable.at(i), nullptr);
-            vkDestroySemaphore(m_Device->GetVulkanDevice(), m_Semaphores.RenderComplete.at(i), nullptr);
+            vkDestroySemaphore(m_Device->GetVulkanDevice(), m_ImageAvailable.at(i), nullptr);
+            vkDestroySemaphore(m_Device->GetVulkanDevice(), m_RenderComplete.at(i), nullptr);
             vkDestroyFence(m_Device->GetVulkanDevice(), m_WaitFences.at(i), nullptr);
         }
 
@@ -314,12 +324,13 @@ namespace Dodo {
             pfnGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &modeCount, modes.data());
         }
         
-        const bool enableImGui = Application::GetCurrent().GetSpecs().EnableImGui;
+        const auto& app = Application::GetCurrent();
+        const bool  enableImGui = app.GetSpecs().EnableImGui;
         // Select surface format & color space.
         // Surface format has to be compatible with ImGui when enabled!
         m_SurfaceFormat = formats.back();
         VkSurfaceFormatKHR targetFormat{};
-        targetFormat.format = enableImGui ? VK_FORMAT_B8G8R8A8_UNORM : VK_FORMAT_B8G8R8A8_SRGB;
+        targetFormat.format     = enableImGui ? VK_FORMAT_B8G8R8A8_UNORM : VK_FORMAT_B8G8R8A8_SRGB;
         targetFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
         for (const auto& format : formats)
         {
@@ -332,7 +343,7 @@ namespace Dodo {
         // Select present mode.
         // Present mode has to be compatible with ImGui when enabled!
         m_PresentMode = modes.back();
-        const VkPresentModeKHR targetMode = enableImGui ? VK_PRESENT_MODE_FIFO_KHR : Utils::ConvertToVkPresentMode(Renderer::GetSettings().VSyncMode);
+        const VkPresentModeKHR targetMode = enableImGui ? VK_PRESENT_MODE_FIFO_KHR : Utils::ConvertToVkPresentMode(app.GetSpecs().RenderSettings.VSyncMode);
         for (const auto mode : modes)
         {
             if (mode == targetMode)
@@ -439,36 +450,40 @@ namespace Dodo {
             }
 
             VkAttachmentDescription colorAttachment{};
-            colorAttachment.format = m_SurfaceFormat.format;
-            colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-            colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-            colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-            colorAttachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-            colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-            colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            colorAttachment.format          = m_SurfaceFormat.format;
+            colorAttachment.samples         = VK_SAMPLE_COUNT_1_BIT;
+            colorAttachment.loadOp          = VK_ATTACHMENT_LOAD_OP_CLEAR;
+            colorAttachment.storeOp         = VK_ATTACHMENT_STORE_OP_STORE;
+            colorAttachment.stencilLoadOp   = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            colorAttachment.stencilStoreOp  = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            colorAttachment.initialLayout   = VK_IMAGE_LAYOUT_UNDEFINED;
+            colorAttachment.finalLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
             VkAttachmentReference attachmentRef{};
             attachmentRef.attachment = 0;
-            attachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            attachmentRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
             VkSubpassDescription subpass{};
-            subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+            subpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
             subpass.colorAttachmentCount = 1;
-            subpass.pColorAttachments = &attachmentRef;
+            subpass.pColorAttachments    = &attachmentRef;
+
             VkSubpassDependency dependency{};
-            dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-            dependency.dstSubpass = 0;
-            dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-            dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dependency.srcSubpass    = VK_SUBPASS_EXTERNAL;
+            dependency.dstSubpass    = 0;
+            dependency.srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            dependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             dependency.srcAccessMask = 0;
             dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
             VkRenderPassCreateInfo createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+            createInfo.sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
             createInfo.attachmentCount = 1;
-            createInfo.pAttachments = &colorAttachment;
-            createInfo.subpassCount = 1;
-            createInfo.pSubpasses = &subpass;
+            createInfo.pAttachments    = &colorAttachment;
+            createInfo.subpassCount    = 1;
+            createInfo.pSubpasses      = &subpass;
             createInfo.dependencyCount = 1;
-            createInfo.pDependencies = &dependency;
+            createInfo.pDependencies   = &dependency;
             DODO_VK_RESULT(vkCreateRenderPass(m_Device->GetVulkanDevice(), &createInfo, nullptr, &m_RenderPass));
         }
 
@@ -482,15 +497,14 @@ namespace Dodo {
         m_Framebuffers.resize(m_ImageViews.size());
         for (size_t i = 0; i < m_ImageCount; i++)
         {
-            VkImageView attachments[] = { m_ImageViews.at(i) };
             VkFramebufferCreateInfo framebufferInfo{};
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = m_RenderPass;
+            framebufferInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass      = m_RenderPass;
             framebufferInfo.attachmentCount = 1;
-            framebufferInfo.pAttachments = attachments;
-            framebufferInfo.width  = m_Extent.width;
-            framebufferInfo.height = m_Extent.height;
-            framebufferInfo.layers = 1;
+            framebufferInfo.pAttachments    = &m_ImageViews.at(i);
+            framebufferInfo.width           = m_Extent.width;
+            framebufferInfo.height          = m_Extent.height;
+            framebufferInfo.layers          = 1;
             DODO_VK_RESULT(vkCreateFramebuffer(m_Device->GetVulkanDevice(), &framebufferInfo, nullptr, &m_Framebuffers.at(i)));
         }
 
@@ -502,46 +516,46 @@ namespace Dodo {
             }
 
             VkCommandPoolCreateInfo createInfo{};
-            createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            createInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+            createInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            createInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
             createInfo.queueFamilyIndex = m_GraphicsQueueIndex;
             DODO_VK_RESULT(vkCreateCommandPool(m_Device->GetVulkanDevice(), &createInfo, nullptr, &m_CommandPool));
         }
 
         m_CommandBuffers.clear();
-        const uint32_t framesInFlight = Renderer::GetSettings().FramesInFlight;
+        const uint32_t framesInFlight = app.GetSpecs().RenderSettings.ConcurrentFrameCount;
         m_CommandBuffers.resize(framesInFlight);
         for (size_t i = 0; i < m_CommandBuffers.size(); i++)
         {
             VkCommandBufferAllocateInfo allocInfo{};
-            allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocInfo.commandPool = m_CommandPool;
-            allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocInfo.commandPool        = m_CommandPool;
+            allocInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
             allocInfo.commandBufferCount = 1;
             DODO_VK_RESULT(vkAllocateCommandBuffers(m_Device->GetVulkanDevice(), &allocInfo, &m_CommandBuffers.at(i)));
         }
         
         // Create semaphores.
-        for (auto semaphore : m_Semaphores.ImageAvailable)
+        for (auto semaphore : m_ImageAvailable)
         {
             vkDestroySemaphore(m_Device->GetVulkanDevice(), semaphore, nullptr);
         }
 
-        for (auto semaphore : m_Semaphores.RenderComplete)
+        for (auto semaphore : m_RenderComplete)
         {
             vkDestroySemaphore(m_Device->GetVulkanDevice(), semaphore, nullptr);
         }
 
-        m_Semaphores.ImageAvailable.clear();
-        m_Semaphores.RenderComplete.clear();
-        m_Semaphores.ImageAvailable.resize(framesInFlight);
-        m_Semaphores.RenderComplete.resize(m_Semaphores.ImageAvailable.size());
+        m_ImageAvailable.clear();
+        m_RenderComplete.clear();
+        m_ImageAvailable.resize(framesInFlight);
+        m_RenderComplete.resize(m_ImageAvailable.size());
         for (size_t i = 0; i < framesInFlight; i++)
         {
             VkSemaphoreCreateInfo createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-            DODO_VK_RESULT(vkCreateSemaphore(m_Device->GetVulkanDevice(), &createInfo, nullptr, &m_Semaphores.ImageAvailable.at(i)));
-            DODO_VK_RESULT(vkCreateSemaphore(m_Device->GetVulkanDevice(), &createInfo, nullptr, &m_Semaphores.RenderComplete.at(i)));
+            DODO_VK_RESULT(vkCreateSemaphore(m_Device->GetVulkanDevice(), &createInfo, nullptr, &m_ImageAvailable.at(i)));
+            DODO_VK_RESULT(vkCreateSemaphore(m_Device->GetVulkanDevice(), &createInfo, nullptr, &m_RenderComplete.at(i)));
         }
 
         // Create wait fences.
@@ -566,7 +580,7 @@ namespace Dodo {
         return pfnAcquireNextImageKHR(m_Device->GetVulkanDevice(),
                                       m_Swapchain,
                                       UINT64_MAX,
-                                      m_Semaphores.ImageAvailable.at(m_FrameIndex),
+                                      m_ImageAvailable.at(m_FrameIndex),
                                       nullptr,
                                       imageIndex);
     }

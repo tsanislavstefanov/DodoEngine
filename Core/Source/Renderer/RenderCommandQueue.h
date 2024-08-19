@@ -1,14 +1,6 @@
 #pragma once
 
-#include "Bindings/Func.h"
-
 namespace Dodo {
-
-    ////////////////////////////////////////////////////////////////
-    // RENDER FUNC /////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    using RenderFunc = Func<void(), sizeof(void*) + sizeof(uint64_t)>;
 
     ////////////////////////////////////////////////////////////////
     // RENDER COMMAND QUEUE ////////////////////////////////////////
@@ -19,20 +11,26 @@ namespace Dodo {
     public:
         RenderCommandQueue() = default;
 
-        uint32_t GetCommandCount() const
+        template<typename RenderCommand>
+        void Submit(RenderCommand&& cmd)
         {
-            return m_Commands.size();
-        }
-
-        template<typename Command>
-        void Submit(Command&& command)
-        {
-            m_Commands.push_back(std::move(command));
+            m_Commands.push_back(std::forward<RenderCommand>(cmd));
         }
 
         void Execute();
+
+        uint32_t GetCommandCount() const
+        {
+            return (uint32_t)m_Commands.size();
+        }
+
     private:
-        std::deque<RenderFunc> m_Commands{};
+        ////////////////////////////////////////////////////////////
+        // COMMAND /////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////
+        
+        using Command = std::function<void()>;
+        std::deque<Command> m_Commands{};
     };
 
 }

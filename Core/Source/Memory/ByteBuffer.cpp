@@ -1,34 +1,34 @@
 #include "pch.h"
-#include "Buffer.h"
+#include "ByteBuffer.h"
 
 namespace Dodo {
 
     ////////////////////////////////////////////////////////////////
-    // BUFFER //////////////////////////////////////////////////////
+    // BYTE BUFFER /////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    Buffer Buffer::Copy(void* data, size_t size)
+    ByteBuffer ByteBuffer::Copy(void* data, size_t size)
     {
-        Buffer result = nullptr;
+        ByteBuffer result = nullptr;
         result.Allocate(size);
         std::memcpy(result.Data, data, result.Size);
         return result;
     }
 
-    void Buffer::CopyTo(Buffer destination, void* data, size_t size)
+    void ByteBuffer::CopyTo(ByteBuffer destination, void* data, size_t size)
     {
-        DODO_VERIFY(size <= destination.Size);
+        DODO_ASSERT(size <= destination.Size, "!");
         std::memcpy(destination.Data, data, size);
     }
 
-    void Buffer::Allocate(size_t size)
+    void ByteBuffer::Allocate(size_t size)
     {
         Release();
         Data = new uint8_t[size];
         Size = size;
     }
 
-    void Buffer::Release()
+    void ByteBuffer::Release()
     {
         if (Data)
         {

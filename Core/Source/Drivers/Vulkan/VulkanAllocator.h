@@ -33,11 +33,12 @@ namespace Dodo {
         T* MapMemory(VmaAllocation allocation)
         {
             T* mappedMemory = nullptr;
-            vmaMapMemory(s_Data->Allocator, allocation, (void**)&mappedMemory);
+            vmaMapMemory(s_Data->Allocator, allocation, reinterpret_cast<void**>(&mappedMemory));
             return mappedMemory;
         }
 
         void UnmapMemory(VmaAllocation allocation);
+        void Free(VmaAllocation allocation);
 
         // void free(VmaAllocation p_allocation);
         // void destroy_image(VkImage p_image, VmaAllocation p_allocation);

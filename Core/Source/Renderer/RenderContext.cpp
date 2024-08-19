@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "RenderContext.h"
-#include "Renderer.h"
-#include "Drivers/Vulkan/VulkanContext.h"
+#include "Core/Application.h"
+#include "Drivers/Vulkan/VulkanRenderContext.h"
 
 namespace Dodo {
 
@@ -11,10 +11,11 @@ namespace Dodo {
 
     Ref<RenderContext> RenderContext::Create()
     {
-        switch (Renderer::GetSettings().RendererApiType)
+        const auto& app = Application::GetCurrent();
+        switch (app.GetSpecs().RenderSettings.RenderApiType)
         {
-            case RendererApiType::Vulkan: return Ref<VulkanContext>::Create();
-            default: DODO_ASSERT(false, "Renderer API type not supported!");
+            case RenderApiType::Vulkan : return Ref<VulkanRenderContext>::Create();
+            default                    : DODO_ASSERT(false, "RenderApiType not supported!");
         }
 
         return nullptr;

@@ -4,15 +4,17 @@
 namespace Dodo {
 
     ////////////////////////////////////////////////////////////////
-    // RENDER COMMAND BUFFER ///////////////////////////////////////
+    // RENDER COMMAND QUEUE ////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
     void RenderCommandQueue::Execute()
     {
-        for (auto& command : m_Commands)
+        for (const auto& cmd : m_Commands)
         {
-            command.Invoke();
+            cmd();
         }
+
+        m_Commands.clear();
     }
 
 }

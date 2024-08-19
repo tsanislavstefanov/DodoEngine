@@ -1,19 +1,15 @@
 #pragma once
 
-#include <cstdint>
-
 namespace Dodo {
 
     ////////////////////////////////////////////////////////////////
-    // RENDER API ///////////////////////////////////////////////
+    // FILE SYSTEM /////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    class RendererApi
+    class FileSystem
     {
     public:
-        virtual ~RendererApi() = default;
-
-        virtual void Shutdown() = 0;
+        static std::string ReadFileAndSkipBom(const std::filesystem::path& filePath);
     };
 
 }

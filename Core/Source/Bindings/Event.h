@@ -11,7 +11,6 @@ namespace Dodo {
     enum class EventType
     {
         WindowResize   ,
-        WindowMinimize ,
         WindowClose    ,
         KeyDown        ,
         KeyUp          ,
@@ -23,7 +22,7 @@ namespace Dodo {
     };
 
     ////////////////////////////////////////////////////////////////
-    // UTILS ///////////////////////////////////////////////////////
+    // EVENT TYPE MACRO(S) /////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
 #ifndef EVENT_TYPE
@@ -36,21 +35,30 @@ namespace Dodo {
     // EVENT ///////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    struct Event
+    class Event
     {
-        bool Handled = false;
-
+    public:
         virtual ~Event() = default;
 
         virtual EventType GetType() const = 0;
+
+        bool IsHandled() const
+        {
+            return m_Handled;
+        }
+
+    private:
+        bool m_Handled = false;
+
+        friend class EventDispatcher;
     };
 
     ////////////////////////////////////////////////////////////////
-    // EVENT FUNC //////////////////////////////////////////////////
+    // EVENT ACTION ////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    template<typename Type>
-    using EventFunc = Func<bool(Type&)>;
+    template<typename T>
+    using EventAction = Func<bool(T&)>;
 
     ////////////////////////////////////////////////////////////////
     // EVENT DISPATCHER ////////////////////////////////////////////
@@ -63,17 +71,17 @@ namespace Dodo {
             : m_Event(event)
         {}
 
-        template<typename Type>
-        void Dispatch(const EventFunc<Type>& func)
+        template<typename T>
+        void Dispatch(const EventAction<T>& eventAction)
         {
-            if (m_Event.GetType() == Type::GetStaticType())
+            if (m_Event.IsHandled()) // Don't dispatch anymore.
             {
-                if (m_Event.Handled)
-                {
-                    return;
-                }
-
-                m_Event.Handled = func(static_cast<Type&>(m_Event));
+                return;
+            }
+            
+            if (m_Event.GetType() == T::GetStaticType())
+            {
+                m_Event.Handled |= eventAction(static_cast<T&>(m_Event));
             }
         }
 
@@ -85,6 +93,6 @@ namespace Dodo {
     // EVENT CALLBACK //////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    using EventCallback = SmallFunc<void(Event&)>;
+    using EventCallback = Func<void(Event&)>;
 
 }

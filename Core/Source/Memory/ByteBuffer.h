@@ -3,33 +3,33 @@
 namespace Dodo {
 
     ////////////////////////////////////////////////////////////////
-    // BUFFER //////////////////////////////////////////////////////
+    // BYTE BUFFER /////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    struct Buffer
+    struct ByteBuffer
     {
-        static Buffer Copy(void* data, size_t size);
-        static void CopyTo(Buffer destination, void* data, size_t size);
+        static ByteBuffer Copy(void* data, size_t size);
+        static void CopyTo(ByteBuffer destination, void* data, size_t size);
 
         void*  Data;
         size_t Size;
 
-        Buffer()
+        ByteBuffer()
             : Data(nullptr)
             , Size(0)
         {}
 
-        Buffer(std::nullptr_t)
+        ByteBuffer(std::nullptr_t)
             : Data(nullptr)
             , Size(0)
         {}
 
-        Buffer(size_t size)
+        ByteBuffer(size_t size)
             : Data(new uint8_t[size])
             , Size(size)
         {}
 
-        Buffer(void* data, size_t size)
+        ByteBuffer(void* data, size_t size)
             : Data(data)
             , Size(size)
         {}
@@ -44,13 +44,13 @@ namespace Dodo {
         template<typename T>
         T* As()
         {
-            return (T*)Data;
+            return static_cast<T*>(Data);
         }
 
         template<typename T>
         T* As() const
         {
-            return (T*)Data;
+            return static_cast<T*>(Data);
         }
 
         void Release();

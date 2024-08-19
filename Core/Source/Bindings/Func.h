@@ -2,30 +2,32 @@
 
 #include <utility>
 
+#include "Core/Core.h"
+
 namespace Dodo {
 
     ////////////////////////////////////////////////////////////////
     // FUNC ////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    template<typename, size_t>
+    template<typename>
     class Func {};
 
-    template<size_t StackSize, typename Result, typename... Args>
-    class Func<Result(Args...), StackSize>
+    template<typename Result, typename... Args>
+    class Func<Result(Args...)>
     {
     public:
         Func() = default;
 
         template<typename Lambda>
-        Func(Lambda&& lambda)
+        Func(Lambda&& callback)
         {
-            Connect(std::forward<Lambda>(lambda));
+            Connect(std::forward<Lambda>(callback));
         }
 
         operator bool() const
         {
-            return m_Invocation.Callback != nullptr;
+            return m_Invocation.Invoker != nullptr;
         }
 
         Result operator()(Args... args) const
@@ -34,20 +36,19 @@ namespace Dodo {
         }
 
         template<typename Lambda>
-        void Connect(Lambda&& lambda)
+        void Connect(Lambda&& callback)
         {
-            DODO_ASSERT(sizeof(Lambda) <= StackSize, "Function too complex!");
-            new (&m_Invocation.Data) Lambda(std::forward<Lambda>(lambda));
-            m_Invocation.Callback = [](const Storage& data, Args&&... args) -> Result
-            {
-                auto lambda = reinterpret_cast<const Lambda*>(&data);
-                return (*lambda)(std::forward<Args>(args)...);
+            DODO_ASSERT(sizeof(Lambda) <= DefaultStackSize, "Callback too complex!");
+            new (&m_Invocation.Data) Lambda(std::forward<Lambda>(callback));
+            m_Invocation.Invoker = [](const Storage& data, Args&&... args) -> Result {
+                auto callback = reinterpret_cast<const Lambda*>(&data);
+                return (*callback)(std::forward<Args>(args)...);
             };
         }
 
         Result Invoke(Args... args) const
         {
-            return m_Invocation.Callback(m_Invocation.Data, std::forward<Args>(args)...);
+            return m_Invocation.Invoker(m_Invocation.Data, std::forward<Args>(args)...);
         }
 
         void Disconnect()
@@ -56,14 +57,16 @@ namespace Dodo {
         }
 
     private:
+        static constexpr size_t DefaultStackAlignment = alignof(void*);
+        static constexpr size_t DefaultStackSize = sizeof(void*);
+
         ////////////////////////////////////////////////////////////
-        // ALIGNED STORAGE /////////////////////////////////////////
+        // STORAGE /////////////////////////////////////////////////
         ////////////////////////////////////////////////////////////
 
-        template<size_t Align = alignof(void*)>
-        struct AlignedStorage
+        struct Storage
         {
-            alignas(Align) uint8_t Stack[StackSize]{};
+            alignas(DefaultStackAlignment) uint8_t Stack[DefaultStackSize]{};
         };
 
         ////////////////////////////////////////////////////////////
@@ -72,24 +75,17 @@ namespace Dodo {
 
         struct Invocation
         {
-            AlignedStorage Data{};
+            Storage Data{};
 
             ////////////////////////////////////////////////////////
             // STUB ////////////////////////////////////////////////
             ////////////////////////////////////////////////////////
 
             using Stub = Result(*)(const Storage&, Args&&...);
-            Stub Callback = nullptr;
+            Stub Invoker = nullptr;
         };
 
         Invocation m_Invocation{};
     };
-
-    ////////////////////////////////////////////////////////////////
-    // SMALL FUNC //////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    template<typename Result, typename... Args>
-    using SmallFunc = Func<Result(Args...), sizeof(void*)>;
 
 }

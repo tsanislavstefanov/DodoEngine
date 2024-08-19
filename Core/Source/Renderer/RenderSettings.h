@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "RendererApiType.h"
+#include "RenderApiType.h"
 #include "VSyncMode.h"
 
 namespace Dodo {
@@ -13,9 +13,9 @@ namespace Dodo {
 
     struct RenderSettings
     {
-        RendererApiType RendererApiType = RendererApiType::None;
+        RenderApiType RenderApiType = RenderApiType::None;
+        uint32_t ConcurrentFrameCount = 3;
         VSyncMode VSyncMode = VSyncMode::None;
-        uint32_t FramesInFlight = 2;
     };
 
 }

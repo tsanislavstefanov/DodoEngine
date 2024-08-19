@@ -10,6 +10,10 @@ namespace Dodo {
     {
     public:
         Stopwatch();
+        virtual ~Stopwatch() = default;
+
+        void Start();
+        void Reset();
 
         double GetAsMilliseconds() const;
 
@@ -18,9 +22,6 @@ namespace Dodo {
             return GetAsMilliseconds() * 0.001;
         }
 
-        void Start();
-
-        void Reset();
     private:
         std::chrono::steady_clock::time_point m_StartTime{};
     };

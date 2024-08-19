@@ -9,13 +9,13 @@ namespace Dodo {
     class Swapchain : public RefCounted
     {
     public:
-        static Ref<Swapchain> Create(void* windowHandle, uint32_t width, uint32_t height);
+        static Ref<Swapchain> Create();
 
         virtual ~Swapchain() = default;
 
-        virtual void BeginFrame() = 0;
-        virtual void OnResize(uint32_t width, uint32_t height) = 0;
-        virtual void Present() = 0;
+        virtual void BeginFrame_RenderThread() = 0;
+        virtual void OnResize_RenderThread(uint32_t width, uint32_t height) = 0;
+        virtual void Present_RenderThread() = 0;
         virtual void Destroy() = 0;
     };
 

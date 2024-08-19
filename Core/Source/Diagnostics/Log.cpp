@@ -53,9 +53,11 @@ namespace Dodo {
     {
         switch (type)
         {
-            case LoggerType::Console: return std::make_shared<ConsoleLogger>();
-            default:                  return nullptr;
+            case LoggerType::Console : return std::make_shared<ConsoleLogger>();
+            default                  : DODO_ASSERT(false, "LoggerType not supported!");
         }
+
+        return nullptr;
     }
 
     ////////////////////////////////////////////////////////////////

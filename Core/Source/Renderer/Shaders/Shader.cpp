@@ -1,24 +1,24 @@
 #include "pch.h"
-#include "Swapchain.h"
+#include "Shader.h"
 #include "Core/Application.h"
-#include "Drivers/Vulkan/VulkanSwapchain.h"
+#include "Drivers/Vulkan/Shaders/VulkanShader.h"
 
 namespace Dodo {
 
     ////////////////////////////////////////////////////////////////
-    // SWAPCHAIN ///////////////////////////////////////////////////
+    // SHADER //////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    Ref<Swapchain> Swapchain::Create()
+    Ref<Shader> Shader::Create(const std::string& assetPath)
     {
         const auto& app = Application::GetCurrent();
         switch (app.GetSpecs().RenderSettings.RenderApiType)
         {
-            case RenderApiType::Vulkan : return Ref<VulkanSwapchain>::Create();
+            case RenderApiType::Vulkan : return Ref<VulkanShader>::Create(assetPath);
             default                    : DODO_ASSERT(false, "RenderApiType not supported!");
         }
 
         return nullptr;
     }
 
-};
+}

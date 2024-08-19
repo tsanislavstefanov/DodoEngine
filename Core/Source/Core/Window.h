@@ -12,9 +12,10 @@ namespace Dodo {
 
     struct WindowSpecs
     {
-        uint32_t Width = 0, Height = 0;
-        std::string Title{};
-        bool Maximized = false;
+        uint32_t    Width     = 0;
+        uint32_t    Height    = 0;
+        std::string Title     = "Unnamed";
+        bool        Maximized = false;
     };
 
     ////////////////////////////////////////////////////////////////
@@ -31,21 +32,6 @@ namespace Dodo {
         {}
 
         EVENT_TYPE(WindowResize)
-    };
-
-    ////////////////////////////////////////////////////////////////
-    // WINDOW MINIMIZE EVENT /////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    struct WindowMinimizeEvent : public Event
-    {
-        const bool Iconify;
-
-        WindowMinimizeEvent(bool iconify)
-            : Iconify(iconify)
-        {}
-
-        EVENT_TYPE(WindowMinimize)
     };
 
     ////////////////////////////////////////////////////////////////
@@ -70,36 +56,53 @@ namespace Dodo {
 
         virtual ~Window() = default;
 
-        uint32_t GetWidth () const { return m_Data.Width ; }
-        uint32_t GetHeight() const { return m_Data.Height; }
-
-        Ref<Swapchain> GetSwapchain() const { return m_Swapchain; }
-
-        void SetEventCallback(const EventCallback& eventCallback) { m_Data.EventCallback = eventCallback; }
-        bool HasFocus() const { return m_Data.HasFocus; }
+        void Init();
         void ProcessEvents();
+        void Destroy();
+        
+        void* GetHandle() const
+        {
+            return m_Handle;
+        }
 
-        virtual void* GetHandle() const = 0;
-        virtual void  SetTitle(const std::string& title) = 0;
-        virtual void  PollEvents() = 0;
-        virtual void  Destroy() = 0;
+        uint32_t GetWidth() const
+        {
+            return m_Data.Width;
+        }
+
+        uint32_t GetHeight() const
+        {
+            return m_Data.Height;
+        }
+
+        Ref<Swapchain> GetSwapchain() const
+        {
+            return m_Swapchain;
+        }
+
+        void SetEventCallback(const EventCallback& eventCallback)
+        {
+            m_Data.EventCallback = eventCallback;
+        }
 
     protected:
+        virtual void PollEvents() = 0;
+
         ////////////////////////////////////////////////////////////
         // WINDOWS DATA ////////////////////////////////////////////
         ////////////////////////////////////////////////////////////
 
         struct WindowData
         {
-            uint32_t Width = 0, Height = 0;
-            std::string Title{};
-            bool HasFocus = false;
+            uint32_t      Width  = 0;
+            uint32_t      Height = 0;
             EventCallback EventCallback{};
         };
 
-        WindowData m_Data{};
+        void*              m_Handle        = nullptr;
+        WindowData         m_Data{};
         Ref<RenderContext> m_RenderContext = nullptr;
-        Ref<Swapchain> m_Swapchain = nullptr;
+        Ref<Swapchain>     m_Swapchain     = nullptr;
     };
 
 }

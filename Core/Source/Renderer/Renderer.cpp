@@ -1,9 +1,8 @@
 #include "pch.h"
 #include "Renderer.h"
-#include "RendererApi.h"
+#include "RenderApi.h"
 #include "Core/Application.h"
-#include "Core/RenderThread.h"
-#include "Drivers/Vulkan/VulkanRenderer.h"
+#include "Drivers/Vulkan/VulkanRenderApi.h"
 
 namespace Dodo {
 
@@ -13,106 +12,39 @@ namespace Dodo {
 
     namespace Utils {
 
-        static RendererApi* CreateRendererApi(RendererApiType apiType)
+        static RenderApi* CreateRenderApi(RenderApiType apiType)
         {
             switch (apiType)
             {
-                case RendererApiType::Vulkan: return new VulkanRenderer();
-                default: DODO_ASSERT(false, "Renderer API type not supported!");
+                case RenderApiType::Vulkan : return new VulkanRenderApi();
+                default                    : return nullptr;
             }
-
-            return nullptr;
         }
 
     }
 
     ////////////////////////////////////////////////////////////////
-    // RENDERER DATA ///////////////////////////////////////////////
+    // DATA ////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    struct RendererData
-    {
-        RenderSettings Settings{};
-        std::vector<RenderCommandQueue*> CommandQueues{};
-        RendererApi* RendererApi = nullptr;
-        size_t SubmissionCommandQueueIndex = 0;
-    };
-
-    static RendererData s_Data{};
+    static RenderSettings s_RenderSettings{};
+    static RenderApi* s_RenderApi = nullptr;
 
     ////////////////////////////////////////////////////////////////
     // RENDERER ////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    const RenderSettings& Renderer::GetSettings()
-    {
-        return s_Data.Settings;
-    }
-
-    void Renderer::SetSettings(const RenderSettings &settings)
-    {
-        s_Data.Settings = settings;
-    }
-
     void Renderer::Init()
     {
-        // Schedule commands in one queue while executing the other.
-        s_Data.CommandQueues.resize(2);
-        s_Data.CommandQueues.at(0) = new RenderCommandQueue();
-        s_Data.CommandQueues.at(1) = new RenderCommandQueue();
-
-        s_Data.RendererApi = Utils::CreateRendererApi(s_Data.Settings.RendererApiType);
+        const auto& app = Application::GetCurrent();
+        s_RenderSettings = app.GetSpecs().RenderSettings;
+        s_RenderApi = Utils::CreateRenderApi(s_RenderSettings.RenderApiType);
     }
 
-    void Renderer::Shutdown()
+    void Renderer::Destroy()
     {
-        s_Data.RendererApi->Shutdown();
-        delete s_Data.RendererApi;
-        for (const auto queue : s_Data.CommandQueues)
-        {
-            delete queue;
-        }
-    }
-
-    RenderCommandQueue* Renderer::GetSubmissionCommandQueue()
-    {
-        return s_Data.CommandQueues.at(s_Data.SubmissionCommandQueueIndex);
-    }
-
-    RenderCommandQueue* Renderer::GetRenderCommandQueue()
-    {
-        const auto index = (s_Data.SubmissionCommandQueueIndex + 1) % s_Data.CommandQueues.size();
-        return s_Data.CommandQueues.at(index);
-    }
-
-    void Renderer::RenderThreadProc(RenderThread* renderThread)
-    {
-        while (renderThread->IsRunning())
-        {
-            WaitAndRender(renderThread);
-        }
-    }
-
-    void Renderer::WaitAndRender(RenderThread* renderThread)
-    {
-        PerformanceStats& performanceStats = Application::GetCurrent().GetStats();
-        // Wait for kick and start to render.
-        {
-            Stopwatch waitStopwatch{};
-            renderThread->WaitAndUpdate(RenderThreadState::Kick, RenderThreadState::Busy);
-            performanceStats.RenderThreadWaitTime = waitStopwatch.GetAsMilliseconds();
-        }
-
-        Stopwatch workStopwatch{};
-        GetRenderCommandQueue()->Execute();
-        // Render done.
-        renderThread->Update(RenderThreadState::Idle);
-        performanceStats.RenderThreadWorkTime = workStopwatch.GetAsMilliseconds();
-    }
-
-    void Renderer::SwapQueues()
-    {
-        s_Data.SubmissionCommandQueueIndex = (s_Data.SubmissionCommandQueueIndex + 1) % s_Data.CommandQueues.size();
+        delete s_RenderApi;
+        s_RenderApi = nullptr;
     }
 
 }

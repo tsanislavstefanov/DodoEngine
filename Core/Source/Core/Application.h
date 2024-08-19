@@ -1,8 +1,9 @@
 #pragma once
 
-#include "RenderThread.h"
 #include "Window.h"
+#include "Bindings/Event.h"
 #include "Renderer/RenderSettings.h"
+#include "Renderer/RenderThread.h"
 
 namespace Dodo {
 
@@ -17,7 +18,7 @@ namespace Dodo {
 
         const char* operator[](size_t index) const
         {
-            DODO_ASSERT(index < Count && index >= 0, "CommandLineArgs index out of range!");
+            DODO_ASSERT(index < Count && index >= 0, "Index out of range!");
             return Args[index];
         }
     };
@@ -28,14 +29,13 @@ namespace Dodo {
 
     struct ApplicationSpecs
     {
-        CommandLineArgs CmdLineArgs     = {};
-        uint32_t        Width           = 0;
-        uint32_t        Height          = 0;
-        std::string     Title           = {};
-        bool            ShowFrameRate   = false;
-        bool            EnableImGui     = false;
-        RenderSettings  RenderSettings  = {};
-        ThreadingPolicy ThreadingPolicy = ThreadingPolicy::None;
+        CommandLineArgs CmdLineArgs{};
+        uint32_t        Width        = 0;
+        uint32_t        Height       = 0;
+        std::string     Title        = "Unnamed";
+        bool            EnableImGui  = false;
+        ThreadPolicy    ThreadPolicy = ThreadPolicy::None;
+        RenderSettings  RenderSettings{};
     };
 
     ////////////////////////////////////////////////////////////////
@@ -44,11 +44,8 @@ namespace Dodo {
 
     struct PerformanceStats
     {
-        double   MainThreadWaitTime   = 0.0;
-        double   MainThreadWorkTime   = 0.0;
-        double   RenderThreadWaitTime = 0.0;
-        double   RenderThreadWorkTime = 0.0;
-        uint64_t FrameRate            =   0;
+        double MainThreadWaitTime = 0.0;
+        double MainThreadWorkTime = 0.0;
     };
 
     ////////////////////////////////////////////////////////////////
@@ -58,39 +55,45 @@ namespace Dodo {
     class Application
     {
     public:
-        static Application& GetCurrent()
+        static inline Application& GetCurrent()
         {
-            return *s_App;
+            return *s_Instance;
         }
 
-        Application(ApplicationSpecs specs);
-
+        Application(const ApplicationSpecs& specs);
         virtual ~Application() = default;
-
-        const ApplicationSpecs& GetSpecs() const { return m_Specs; }
-        Ref<Window> GetWindow() { return m_Window; }
-        Ref<Window> GetWindow() const { return m_Window; }
-        PerformanceStats& GetStats()  { return m_PerformanceStats; }
-        const PerformanceStats& GetStats() const { return m_PerformanceStats; }
 
         void Run();
 
-    private:
-        static Application* s_App;
+        const ApplicationSpecs& GetSpecs() const
+        {
+            return m_Specs;
+        }
 
-        void Init ();
+        Ref<Window> GetWindow() const
+        {
+            return m_Window;
+        }
+
+        const PerformanceStats& GetStats() const
+        {
+            return m_PerformanceStats;
+        }
+
+    private:
+        void Init();
+        void OnEvent(Event& e);
+        bool OnWindowResize(WindowResizeEvent& e);
+        bool OnWindowClose(WindowCloseEvent& e);
         void Close();
 
-        void OnEvent(Event& e);
-        bool OnWindowResized(WindowResizeEvent& e);
-        bool OnWindowMinimized(WindowMinimizeEvent& e);
-        bool OnWindowClosed(WindowCloseEvent& e);
-
-        ApplicationSpecs m_Specs;
-        RenderThread m_RenderThread;
-        Ref<Window> m_Window = nullptr;
-        bool m_IsRunning = true, m_IsMinimized = false;
-        PerformanceStats m_PerformanceStats{};
+        static Application* s_Instance;
+        ApplicationSpecs    m_Specs;
+        RenderThread        m_RenderThread;
+        Ref<Window>         m_Window      = nullptr;
+        bool                m_IsRunning   = true;
+        bool                m_ShouldPause = false;
+        PerformanceStats    m_PerformanceStats{};
     };
 
 }

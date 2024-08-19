@@ -17,11 +17,6 @@ namespace Dodo {
 
         virtual ~RefCounted() = default;
 
-        uint64_t GetRefCount() const
-        {
-            return m_RefCount.load();
-        }
-
         void Reference() const
         {
             ++m_RefCount;
@@ -30,6 +25,11 @@ namespace Dodo {
         void UnReference() const
         {
             --m_RefCount;
+        }
+
+        uint64_t GetRefCount() const
+        {
+            return m_RefCount.load();
         }
 
     private:

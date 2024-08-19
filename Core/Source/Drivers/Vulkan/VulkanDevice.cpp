@@ -1,127 +1,8 @@
 #include "pch.h"
-#include "Vulkan.h"
 #include "VulkanDevice.h"
+#include "VulkanCommon.h"
 
 namespace Dodo {
-
-    ////////////////////////////////////////////////////////////////
-    // VULKAN ADAPTER //////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    VulkanPhysicalDevice::VulkanPhysicalDevice(VkInstance instance)
-    {
-        uint32_t physicalDeviceCount = 0;
-        DODO_VK_RESULT(vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr));
-        DODO_ASSERT(physicalDeviceCount != 0, "GPU that support Vulkan not found, is a driver installed?");
-        std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-        DODO_VK_RESULT(vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data()));
-
-        // Prefer discrete GPU, due to performance reasons.
-        for (const auto& candidate : physicalDevices)
-        {
-            VkPhysicalDeviceProperties properties{};
-            vkGetPhysicalDeviceProperties(candidate, &properties);
-            if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-            {
-                m_PhysicalDevice = candidate;
-                m_Properties = properties;
-                break;
-            }
-        }
-
-        // Get first available GPU as fallback.
-        if (!m_PhysicalDevice)
-        {
-            LOG_CORE_WARNING("No discrete GPU found!");
-            m_PhysicalDevice = physicalDevices.back();
-            vkGetPhysicalDeviceProperties(m_PhysicalDevice, &m_Properties);
-        }
-
-        DODO_ASSERT(m_PhysicalDevice, "No GPU found!");
-        // Get supported extensions.
-        uint32_t extensionCount = 0;
-        DODO_VK_RESULT(vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionCount, nullptr));
-        std::vector<VkExtensionProperties> extensions(extensionCount);
-        DODO_VK_RESULT(vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionCount, extensions.data()));
-        for (const auto& extension : extensions)
-        {
-            m_SupportedExtensions.insert(extension.extensionName);
-        }
-
-        // Get vendor.
-        struct Vendor
-        {
-            uint32_t    ID   = 0;
-            const char* Name = nullptr;
-        };
-
-        Vendor vendors[] = {
-                { 0x1002, "AMD"      },
-                { 0x1010, "ImgTec"   },
-                { 0x10DE, "NVIDIA"   },
-                { 0x13B5, "ARM"      },
-                { 0x5143, "Qualcomm" },
-                { 0x8086, "Intel"    }
-        };
-
-        for (const auto& vendor : vendors)
-        {
-            if (vendor.ID == m_Properties.vendorID)
-            {
-                m_VendorName = vendor.Name;
-                break;
-            }
-        }
-
-        LOG_CORE_INFO("Selected GPU...");
-        LOG_CORE_INFO("    Vendor: {0}.", m_VendorName);
-        LOG_CORE_INFO("    Name: {0}.", m_Properties.deviceName);
-        LOG_CORE_INFO("    API version: {0}.{1}.{2}.", VK_API_VERSION_MAJOR(m_Properties.apiVersion), VK_API_VERSION_MINOR(m_Properties.apiVersion), VK_API_VERSION_PATCH(m_Properties.apiVersion));
-
-        // Get queue family indices.
-        m_QueueFamilyIndices = FindQueueFamilyIndices();
-        if (m_QueueFamilyIndices.Graphics.has_value())
-        {
-            const float defaultQueuePriority = 1.0f;
-            VkDeviceQueueCreateInfo queueCreateInfo{};
-            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-            queueCreateInfo.queueFamilyIndex = m_QueueFamilyIndices.Graphics.value();
-            queueCreateInfo.queueCount = 1;
-            queueCreateInfo.pQueuePriorities = &defaultQueuePriority;
-            m_QueueCreateInfos.push_back(queueCreateInfo);
-        }
-    }
-
-    QueueFamilyIndices VulkanPhysicalDevice::FindQueueFamilyIndices() const
-    {
-        // Get available queues.
-        uint32_t queueCount = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &queueCount, nullptr);
-        std::vector<VkQueueFamilyProperties> queues(queueCount);
-        vkGetPhysicalDeviceQueueFamilyProperties(m_PhysicalDevice, &queueCount, queues.data());
-
-        // Find family indices.
-        QueueFamilyIndices result{};
-        uint32_t queueIndex = 0;
-        for (const auto& queue : queues)
-        {
-            if (queue.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-            {
-                result.Graphics = queueIndex;
-                break;
-            }
-
-            queueIndex++;
-        }
-
-        DODO_ASSERT(result.Graphics.has_value(), "Graphics queue not found!");
-        return result;
-    }
-
-    bool VulkanPhysicalDevice::IsExtensionSupported(const std::string& extensionName) const
-    {
-        return m_SupportedExtensions.contains(extensionName);
-    }
 
     ////////////////////////////////////////////////////////////////
     // VULKAN DEVICE ///////////////////////////////////////////////
@@ -129,10 +10,8 @@ namespace Dodo {
 
     VulkanDevice::VulkanDevice(VkInstance instance)
     {
-        m_PhysicalDevice = Ref<VulkanPhysicalDevice>::Create(instance);
-        const auto& queueCreateInfos = m_PhysicalDevice->GetQueueCreateInfos();
-
         // Request extensions.
+        m_PhysicalDevice = Ref<VulkanPhysicalDevice>::Create(instance);
         std::map<std::string, bool> requestedExtensions{};
         requestedExtensions.insert({ VK_KHR_SWAPCHAIN_EXTENSION_NAME, true });
 
@@ -164,21 +43,91 @@ namespace Dodo {
 
         // Create device.
         VkDeviceCreateInfo deviceInfo{};
-        deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        deviceInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
-        deviceInfo.pQueueCreateInfos = queueCreateInfos.data();
-        deviceInfo.enabledExtensionCount = static_cast<uint32_t>(enabledExtensions.size());
+        deviceInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        const auto& queueCreateInfos       = m_PhysicalDevice->GetQueueCreateInfos();
+        deviceInfo.queueCreateInfoCount    = (uint32_t)queueCreateInfos.size();
+        deviceInfo.pQueueCreateInfos       = queueCreateInfos.data();
+        deviceInfo.enabledExtensionCount   = (uint32_t)enabledExtensions.size();
         deviceInfo.ppEnabledExtensionNames = enabledExtensions.data();
         DODO_VK_RESULT(vkCreateDevice(m_PhysicalDevice->GetVulkanPhysicalDevice(), &deviceInfo, nullptr, &m_Device));
 
         // Get queue(s).
         const auto& queueFamilyIndices = m_PhysicalDevice->GetQueueFamilyIndices();
-        vkGetDeviceQueue(m_Device, queueFamilyIndices.Graphics.value(), 0, &m_GraphicsQueue);
+        m_GraphicsQueueIndex = queueFamilyIndices.Graphics.value();
+        vkGetDeviceQueue(m_Device, m_GraphicsQueueIndex, 0, &m_GraphicsQueue);
+    }
+
+    VkCommandBuffer VulkanDevice::AllocateThreadLocalCommandBuffer(bool begin)
+    {
+        VkCommandBufferAllocateInfo createInfo{};
+        createInfo.sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        createInfo.commandPool        = GetOrCreateThreadLocalCommandPool();
+        createInfo.level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        createInfo.commandBufferCount = 1;
+        VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+        DODO_VK_RESULT(vkAllocateCommandBuffers(m_Device, &createInfo, &commandBuffer));
+        if (begin)
+        {
+            VkCommandBufferBeginInfo beginInfo{};
+            beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+            DODO_VK_RESULT(vkBeginCommandBuffer(commandBuffer, &beginInfo));
+        }
+
+        return commandBuffer;
+    }
+
+    void VulkanDevice::FlushCommandBuffer(VkCommandBuffer commandBuffer)
+    {
+        FlushCommandBuffer(commandBuffer, m_GraphicsQueue);
+    }
+
+    void VulkanDevice::FlushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue)
+    {
+        // End command buffer recording.
+        DODO_VK_RESULT(vkEndCommandBuffer(commandBuffer));
+
+        // Submit to graphics queue.
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers    = &commandBuffer;
+        VkFenceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        VkFence fence    = VK_NULL_HANDLE;
+        DODO_VK_RESULT(vkCreateFence(m_Device, &createInfo, nullptr, &fence));
+        DODO_VK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, fence));
+
+        // Wait for the fence to signal.
+        static constexpr uint64_t defaultFenceTimeout = std::numeric_limits<uint64_t>::max();
+        DODO_VK_RESULT(vkWaitForFences(m_Device, 1, &fence, VK_TRUE, defaultFenceTimeout));
+
+        // Free resources.
+        vkDestroyFence(m_Device, fence, nullptr);
+        vkFreeCommandBuffers(m_Device, GetOrCreateThreadLocalCommandPool(), 1, &commandBuffer);
     }
 
     void VulkanDevice::Destroy()
     {
         vkDestroyDevice(m_Device, nullptr);
+    }
+
+    VkCommandPool VulkanDevice::GetOrCreateThreadLocalCommandPool()
+    {
+        const auto threadId = std::this_thread::get_id();
+        auto found = m_ThreadLocalCommandPools.find(threadId);
+        if (found != m_ThreadLocalCommandPools.end())
+        {
+            return found->second;
+        }
+        
+        VkCommandPoolCreateInfo createInfo{};
+        createInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        createInfo.flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        createInfo.queueFamilyIndex = m_GraphicsQueueIndex;
+        VkCommandPool commandPool   = VK_NULL_HANDLE;
+        DODO_VK_RESULT(vkCreateCommandPool(m_Device, &createInfo, nullptr, &commandPool));
+        m_ThreadLocalCommandPools.insert({ threadId, commandPool });
+        return commandPool;
     }
 
 }
