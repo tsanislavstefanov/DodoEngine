@@ -13,12 +13,14 @@ namespace Dodo {
     public:
         WindowsWindow(const WindowSpecs& specs);
 
-    protected:
         // Inherited via [Window].
+        void Init() override;
+
+    protected:
         void PollEvents() override;
 
     private:
-        static LRESULT CALLBACK Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam);
+        static LRESULT CALLBACK WndProc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam);
 
         HINSTANCE m_Module = nullptr;
     };

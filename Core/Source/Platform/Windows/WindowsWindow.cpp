@@ -19,7 +19,7 @@ namespace Dodo {
         ZeroMemory(&wndClass, sizeof(WNDCLASSEXW));
         wndClass.cbSize = sizeof(WNDCLASSEXW);
         wndClass.style = CS_OWNDC;
-        wndClass.lpfnWndProc = Win32Proc;
+        wndClass.lpfnWndProc = WndProc;
         wndClass.hInstance = m_Module;
         wndClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
         wndClass.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
@@ -50,8 +50,11 @@ namespace Dodo {
         SetWindowLongPtrW(handle, GWLP_USERDATA, reinterpret_cast<LPARAM>(&m_Data));
         ShowWindow(handle, SW_SHOWDEFAULT);
         SetFocus(handle);
-        
-        // Create input devices.
+    }
+
+    void WindowsWindow::Init()
+    {
+        // Init supported input devices.
         WindowsInput::Init();
     }
 
@@ -68,30 +71,33 @@ namespace Dodo {
         }
     }
 
-    LRESULT WindowsWindow::Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam)
+    LRESULT WindowsWindow::WndProc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam)
     {
-        // Check for input events.
-        if (WindowsInput::Win32Proc(handle, msg, wparam, lparam))
+        // Handle input device events.
+        if (WindowsInput::WndProc(handle, msg, wparam, lparam))
         {
             return 0;
         }
 
-        // Handle all other events.
+        // Handle window events.
         const LONG_PTR userData = GetWindowLongPtrW(handle, GWLP_USERDATA);
         auto& windowData = *reinterpret_cast<WindowData*>(userData);
         switch (msg)
         {
             case WM_SIZE:
             {
-                const auto width  = (uint32_t)LOWORD(lparam);
-                const auto height = (uint32_t)HIWORD(lparam);
+                const auto width  = static_cast<uint32_t>(LOWORD(lparam));
+                const auto height = static_cast<uint32_t>(HIWORD(lparam));
                 if (width == windowData.Width && height == windowData.Height)
                 {
                     return 0;
                 }
 
+                // Update window data.
                 windowData.Width  = width;
                 windowData.Height = height;
+
+                // Invoke event callback.
                 WindowResizeEvent e(width, height);
                 windowData.EventCallback(e);
                 break;

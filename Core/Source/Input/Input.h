@@ -1,9 +1,7 @@
 #pragma once
 
 #include "Keyboard.h"
-#include "KeyCode.h"
 #include "Mouse.h"
-#include "MouseCode.h"
 
 namespace Dodo {
 
@@ -14,9 +12,6 @@ namespace Dodo {
     class Input
     {
     public:
-        static Keyboard* Keyboard;
-        static Mouse* Mouse;
-
         static bool GetKey(KeyCode keyCode)
         {
             return Keyboard->GetKey(keyCode);
@@ -55,6 +50,13 @@ namespace Dodo {
         static void Update();
 
         virtual ~Input() = default;
+
+    protected:
+        Input() = default;
+
+    private:
+        static Keyboard* Keyboard;
+        static Mouse* Mouse;
     };
 
 }

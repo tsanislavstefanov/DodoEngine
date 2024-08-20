@@ -60,7 +60,7 @@ namespace Dodo {
         }
 
     private:
-        static void RenderProc(RenderThread* renderThread);
+        static void Run(RenderThread* renderThread);
         static void WaitAndRender(RenderThread* renderThread);
 
         void Kick();

@@ -1,8 +1,6 @@
 #pragma once
 
 #include "Bindings/Event.h"
-#include "Renderer/RenderContext.h"
-#include "Renderer/Swapchain.h"
 
 namespace Dodo {
 
@@ -12,10 +10,9 @@ namespace Dodo {
 
     struct WindowSpecs
     {
-        uint32_t    Width     = 0;
-        uint32_t    Height    = 0;
-        std::string Title     = "Unnamed";
-        bool        Maximized = false;
+        uint32_t Width = 0, Height = 0;
+        std::string Title = "Unnamed";
+        bool Maximized = false;
     };
 
     ////////////////////////////////////////////////////////////////
@@ -56,9 +53,11 @@ namespace Dodo {
 
         virtual ~Window() = default;
 
-        void Init();
+        virtual void Init() {}
+
         void ProcessEvents();
-        void Destroy();
+
+        virtual void Destroy() {}
         
         void* GetHandle() const
         {
@@ -75,11 +74,6 @@ namespace Dodo {
             return m_Data.Height;
         }
 
-        Ref<Swapchain> GetSwapchain() const
-        {
-            return m_Swapchain;
-        }
-
         void SetEventCallback(const EventCallback& eventCallback)
         {
             m_Data.EventCallback = eventCallback;
@@ -89,20 +83,17 @@ namespace Dodo {
         virtual void PollEvents() = 0;
 
         ////////////////////////////////////////////////////////////
-        // WINDOWS DATA ////////////////////////////////////////////
+        // WINDOW DATA /////////////////////////////////////////////
         ////////////////////////////////////////////////////////////
 
         struct WindowData
         {
-            uint32_t      Width  = 0;
-            uint32_t      Height = 0;
+            uint32_t Width = 0, Height = 0;
             EventCallback EventCallback{};
         };
 
-        void*              m_Handle        = nullptr;
-        WindowData         m_Data{};
-        Ref<RenderContext> m_RenderContext = nullptr;
-        Ref<Swapchain>     m_Swapchain     = nullptr;
+        void* m_Handle = nullptr;
+        WindowData m_Data{};
     };
 
 }

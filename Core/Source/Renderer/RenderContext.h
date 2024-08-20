@@ -1,6 +1,6 @@
 #pragma once
 
-#include "RenderDeviceType.h"
+#include "RenderDeviceDriver.h"
 
 namespace Dodo {
 
@@ -8,7 +8,6 @@ namespace Dodo {
     // FORWARD DECLARATIONS ////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    class RenderDevice;
     class Swapchain;
 
     ////////////////////////////////////////////////////////////////
@@ -18,11 +17,11 @@ namespace Dodo {
     class RenderContext : public RefCounted
     {
     public:
-        static Ref<RenderContext> Create(RenderDeviceType renderDeviceType);
+        static Ref<RenderContext> Create(RenderDeviceDriverType deviceDriverType);
 
         virtual ~RenderContext() = default;
 
-        virtual Ref<RenderDevice> CreateRenderDevice() const = 0;
+        virtual Ref<RenderDevice> CreateDeviceDriver() const = 0;
 
         virtual void Destroy() = 0;
 

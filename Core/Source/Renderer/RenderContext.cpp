@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "RenderContext.h"
-#include "Drivers/Vulkan/VulkanRenderContext.h"
+#include "Drivers/Vulkan/VulkanContext.h"
 
 namespace Dodo {
 
@@ -8,12 +8,12 @@ namespace Dodo {
     // RENDER CONTEXT //////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    Ref<RenderContext> RenderContext::Create(RenderDeviceType renderDeviceType)
+    Ref<RenderContext> RenderContext::Create(RenderDeviceDriverType deviceDriverType)
     {
-        switch (renderDeviceType)
+        switch (deviceDriverType)
         {
-            case RenderDeviceType::Vulkan : return Ref<VulkanRenderContext>::Create();
-            default                       : DODO_ASSERT(false, "RenderDeviceType not supported!");
+            case RenderDeviceDriverType::Vulkan : return Ref<VulkanContext>::Create();
+            default : DODO_ASSERT(false, "RenderDeviceDriverType not supported!");
         }
 
         return nullptr;

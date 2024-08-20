@@ -10,19 +10,19 @@ namespace Dodo {
 
     enum class EventType
     {
-        WindowResize   ,
-        WindowClose    ,
-        KeyDown        ,
-        KeyUp          ,
-        MouseScroll    ,
+        WindowResize,
+        WindowClose,
+        KeyDown,
+        KeyUp,
+        MouseScroll,
         MouseButtonDown,
-        MouseButtonUp  ,
-        AutoCount      ,
+        MouseButtonUp,
+        AutoCount,
         None
     };
 
     ////////////////////////////////////////////////////////////////
-    // EVENT TYPE MACRO(S) /////////////////////////////////////////
+    // UTILS ///////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
 #ifndef EVENT_TYPE

@@ -8,13 +8,12 @@ namespace Dodo {
     ////////////////////////////////////////////////////////////////
 
     Keyboard* Input::Keyboard = nullptr;
-    Mouse*    Input::Mouse    = nullptr;
+    Mouse* Input::Mouse = nullptr;
 
     void Input::Update()
     {
         Keyboard->Update();
         Mouse->Update();
-        // TODO: Other inputs (GamePad, etc.)
     }
 
 }

@@ -10,6 +10,9 @@ include_directories(Source)
 find_package(Vulkan REQUIRED)
 include_directories(${Vulkan_INCLUDE_DIRS})
 
+# Add third-party includes
+include_directories(ThirdParty/spdlog/include)
+
 # Add source files
 file(GLOB_RECURSE HEADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/Source/*.h)
 file(GLOB_RECURSE SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/Source/*.cpp)

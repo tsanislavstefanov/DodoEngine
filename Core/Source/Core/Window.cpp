@@ -17,29 +17,17 @@ namespace Dodo {
         return Ref<WindowsWindow>::Create(specs);
 #else
         DODO_ASSERT(false, "Platform not supported!");
-#endif
         return nullptr;
-    }
-
-    void Window::Init()
-    {
-        // Create render context & swapchain.
-        m_RenderContext = RenderContext::Create();
-        m_Swapchain = Swapchain::Create();
+#endif
     }
 
     void Window::ProcessEvents()
     {
+        // Prepare input devices for incoming events.
         Input::Update();
-        PollEvents();
-    }
 
-    void Window::Destroy()
-    {
-        // Swapchain has to be destroyed before the context
-        // because the Swapchain needs the context.
-        m_Swapchain->Destroy();
-        m_RenderContext->Destroy();
+        // Get incoming events.
+        PollEvents();
     }
 
 }

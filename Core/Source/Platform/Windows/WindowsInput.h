@@ -1,8 +1,6 @@
 #pragma once
 
 #include "Input/Input.h"
-#include "Input/Keyboard.h"
-#include "Input/Mouse.h"
 
 namespace Dodo {
 
@@ -15,7 +13,7 @@ namespace Dodo {
     public:
         WindowsKeyboard();
 
-        bool Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam);
+        bool WndProc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam);
     };
 
     ////////////////////////////////////////////////////////////////
@@ -27,7 +25,7 @@ namespace Dodo {
     public:
         WindowsMouse();
 
-        bool Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam);
+        bool WndProc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam);
     };
 
     ////////////////////////////////////////////////////////////////
@@ -39,7 +37,7 @@ namespace Dodo {
     public:
         static void Init();
 
-        static bool Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam);
+        static bool WndProc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam);
     };
 
 }

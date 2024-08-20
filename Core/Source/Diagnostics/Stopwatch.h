@@ -10,9 +10,9 @@ namespace Dodo {
     {
     public:
         Stopwatch();
-        virtual ~Stopwatch() = default;
 
         void Start();
+
         void Reset();
 
         double GetAsMilliseconds() const;

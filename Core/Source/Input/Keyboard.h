@@ -1,8 +1,45 @@
 #pragma once
 
-#include "KeyCode.h"
+#include <array>
+#include <cstdint>
+#include <cstring>
 
 namespace Dodo {
+
+    ////////////////////////////////////////////////////////////////
+    // KEY CODE ////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    enum class KeyCode
+    {
+        LeftArrow ,
+        UpArrow   ,
+        RightArrow,
+        DownArrow ,
+        Alpha0    ,
+        Alpha1    ,
+        Alpha2    ,
+        Alpha3    ,
+        Alpha4    ,
+        Alpha5    ,
+        Alpha6    ,
+        Alpha7    ,
+        Alpha8    ,
+        Alpha9    ,
+        Q         ,
+        W         ,
+        E         ,
+        R         ,
+        T         ,
+        Y         ,
+        u         ,
+        I         ,
+        O         ,
+        P         ,
+        A         ,
+        AutoCount ,
+        None
+    };
 
     ////////////////////////////////////////////////////////////////
     // KEYBOARD ////////////////////////////////////////////////////
@@ -11,6 +48,7 @@ namespace Dodo {
     class Keyboard
     {
     public:
+        Keyboard() = default;
         virtual ~Keyboard() = default;
 
         bool GetKey(KeyCode keyCode) const
@@ -31,14 +69,31 @@ namespace Dodo {
             return m_PreviousState.Keys.at(keyIndex) && !m_State.Keys.at(keyIndex);
         }
 
-        void Update();
+        void Update()
+        {
+            // Move current state to previous.
+            std::memcpy(&m_PreviousState, &m_State, sizeof(State));
+            m_State.Clear();
+        }
 
-        void Reset();
+        void Reset()
+        {
+            m_State.Clear();
+            m_PreviousState.Clear();
+        }
 
     protected:
-        bool OnKeyDown(KeyCode keyCode);
+        void OnKeyDown(KeyCode keyCode)
+        {
+            const auto keyIndex = static_cast<size_t>(keyCode);
+            m_State.Keys.at(keyIndex) = true;
+        }
 
-        bool OnKeyUp(KeyCode keyCode);
+        void OnKeyUp(KeyCode keyCode)
+        {
+            const auto keyIndex = static_cast<size_t>(keyCode);
+            m_State.Keys.at(keyIndex) = false;
+        }
 
     private:
         ////////////////////////////////////////////////////////////

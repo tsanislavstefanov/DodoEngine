@@ -1,84 +1,8 @@
 #pragma once
 
+#include "spdlog/spdlog.h"
+
 namespace Dodo {
-
-    ////////////////////////////////////////////////////////////////
-    // LOGGER TYPE /////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    enum class LoggerType
-    {
-        Console  ,
-        AutoCount,
-        None
-    };
-
-    ////////////////////////////////////////////////////////////////
-    // LOG LEVEL ///////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    enum class LogLevel
-    {
-        Debug    ,
-        Info     ,
-        Warning  ,
-        Error    ,
-        Fatal    ,
-        AutoCount,
-        None
-    };
-
-    ////////////////////////////////////////////////////////////////
-    // LOGGER //////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    class Logger
-    {
-    public:
-        static std::shared_ptr<Logger> Create(LoggerType type);
-
-        Logger() = default;
-
-        virtual ~Logger() = default;
-
-        template<typename... Args>
-        void LogDebug(const std::string& format, Args&&... args)
-        {
-            std::string message = std::vformat(format, std::make_format_args(args...));
-            WriteLog(LogLevel::Debug, message);
-        }
-
-        template<typename... Args>
-        void LogInfo(const std::string& format, Args&&... args)
-        {
-            std::string message = std::vformat(format, std::make_format_args(args...));
-            WriteLog(LogLevel::Info, message);
-        }
-
-        template<typename... Args>
-        void LogWarning(const std::string& format, Args&&... args)
-        {
-            std::string message = std::vformat(format, std::make_format_args(args...));
-            WriteLog(LogLevel::Warning, message);
-        }
-
-        template<typename... Args>
-        void LogError(const std::string& format, Args&&... args)
-        {
-            std::string message = std::vformat(format, std::make_format_args(args...));
-            WriteLog(LogLevel::Error, message);
-        }
-
-        template<typename... Args>
-        void LogFatal(const std::string& format, Args&&... args)
-        {
-            std::string message = std::vformat(format, std::make_format_args(args...));
-            WriteLog(LogLevel::Fatal, message);
-        }
-
-    protected:
-        virtual void WriteLog(LogLevel level, const std::string& message) = 0;
-    };
 
     ////////////////////////////////////////////////////////////////
     // LOG /////////////////////////////////////////////////////////
@@ -87,17 +11,68 @@ namespace Dodo {
     class Log
     {
     public:
+        ////////////////////////////////////////////////////////////
+        // TYPE ////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////
+
+        enum class Type
+        {
+            Core, // Core engine.
+            Client, // Runtime client (or sandbox).
+            Both,
+            AutoCount,
+            None
+        };
+
+        ////////////////////////////////////////////////////////////
+        // LEVEL ///////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////
+
+        enum class Level
+        {
+            Trace,
+            Info,
+            Warning,
+            Error,
+            Fatal,
+            AutoCount,
+            None
+        };
+
+        ////////////////////////////////////////////////////////////
+        // TAG INFO ////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////
+
+        struct TagInfo
+        {
+            bool Enabled = true;
+            Type TypeFilter = Type::Both;
+            Level LevelFilter = Level::Trace;
+        };
+
         static void Init();
 
-        static std::shared_ptr<Logger> GetCoreLogger()
+        static void DeInit();
+
+        static std::shared_ptr<spdlog::logger> GetCoreLogger()
         {
             return s_CoreLogger;
         }
 
-        static void DeInit();
+        static std::shared_ptr<spdlog::logger> GetClientLogger()
+        {
+            return s_ClientLogger;
+        }
 
     private:
-        static std::shared_ptr<Logger> s_CoreLogger;
+        template<typename... Args>
+        void WriteMessage(Type type, Level level, std::format_string<Args...> fmt, Args&&... args)
+        {
+
+        }
+
+        static std::shared_ptr<spdlog::logger> s_CoreLogger;
+        static std::shared_ptr<spdlog::logger> s_ClientLogger;
     };
 
 }

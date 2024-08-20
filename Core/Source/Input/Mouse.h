@@ -1,8 +1,23 @@
 #pragma once
 
-#include "MouseCode.h"
+#include <array>
+#include <cstdint>
+#include <cstring>
 
 namespace Dodo {
+
+    ////////////////////////////////////////////////////////////////
+    // MOUSE CODE //////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    enum class MouseCode
+    {
+        Left,
+        Middle,
+        Right,
+        AutoCount,
+        None
+    };
 
     ////////////////////////////////////////////////////////////////
     // MOUSE ///////////////////////////////////////////////////////
@@ -11,6 +26,7 @@ namespace Dodo {
     class Mouse
     {
     public:
+        Mouse() = default;
         virtual ~Mouse() = default;
 
         float GetWheelDelta() const
@@ -36,16 +52,36 @@ namespace Dodo {
             return m_PreviousState.Buttons.at(buttonIndex) && !m_State.Buttons.at(buttonIndex);
         }
 
-        void Update();
+        void Update()
+        {
+            // Move current state to previous.
+            std::memcpy(&m_PreviousState, &m_State, sizeof(State));
+            m_State.Clear();
+        }
 
-        void Reset();
+        void Reset()
+        {
+            m_State.Clear();
+            m_PreviousState.Clear();
+        }
 
     protected:
-        bool OnWheelScroll(float wheelDelta);
+        void OnWheelScroll(float wheelDelta)
+        {
+            m_State.WheelDelta = wheelDelta;
+        }
 
-        bool OnButtonDown(MouseCode mouseCode);
+        void OnButtonDown(MouseCode mouseCode)
+        {
+            const auto buttonIndex = static_cast<size_t>(mouseCode);
+            m_State.Buttons.at(buttonIndex) = true;
+        }
                         
-        bool OnButtonUp(MouseCode mouseCode);
+        void OnButtonUp(MouseCode mouseCode)
+        {
+            const auto buttonIndex = static_cast<size_t>(mouseCode);
+            m_State.Buttons.at(buttonIndex) = false;
+        }
 
     private:
         ////////////////////////////////////////////////////////////

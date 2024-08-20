@@ -9,8 +9,8 @@ namespace Dodo {
     enum class ThreadPolicy
     {
         SingleThreaded,
-        MultiThreaded ,
-        AutoCount     ,
+        MultiThreaded,
+        AutoCount,
         None
     };
 

@@ -42,23 +42,3 @@
 #   define DODO_ASSERT(...)
 #   define DODO_VERIFY(...)
 #endif
-
-////////////////////////////////////////////////////////////////
-// NON COPYABLE ////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-
-namespace Dodo {
-
-    template<typename>
-    class NonCopyable
-    {
-    public:
-        NonCopyable(const NonCopyable&) = delete;
-        NonCopyable& operator=(const NonCopyable&) = delete;
-
-    protected:
-        NonCopyable() = default;
-        virtual ~NonCopyable() = default;
-    };
-
-}

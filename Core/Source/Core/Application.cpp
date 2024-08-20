@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "Application.h"
-#include "Renderer/Renderer.h"
 #include "Renderer/Swapchain.h"
 
 namespace Dodo {
@@ -24,28 +23,29 @@ namespace Dodo {
         Init();
         while (m_IsRunning)
         {
-            // Wait for RenderThread to finish frame [N - 2].
-            {
-                Stopwatch stopwatch{};
-                m_RenderThread.BlockUntilRenderComplete();
-                m_PerformanceStats.MainThreadWaitTime = stopwatch.GetAsMilliseconds();
-            }
+            Stopwatch waitStopwatch{};
+            m_RenderThread.BlockUntilRenderComplete();
+            m_PerformanceStats.MainThreadWaitTime = waitStopwatch.GetAsMilliseconds();
 
+            Stopwatch workStopwatch{};
             m_Window->ProcessEvents();
             
-            // Kick RenderThread to render previous frame [N - 1]
-            // while preparing new frame [N].
+            // Kick RenderThread to render previous frame [N - 1].
             m_RenderThread.NextFrame();
 
-            RenderThread::Submit([this]() {
-                Ref<Swapchain> swapchain = m_Window->GetSwapchain();
-                swapchain->BeginFrame_RenderThread();
+            RenderThread::Submit([]() {
+                const Ref<RenderContext> context = Renderer::GetContext();
+                Ref<Swapchain> swapchain = context->GetSwapchain();
+                swapchain->BeginFrame();
             });
 
-            RenderThread::Submit([this]() {
-                Ref<Swapchain> swapchain = m_Window->GetSwapchain();
-                swapchain->Present_RenderThread();
+            RenderThread::Submit([]() {
+                const Ref<RenderContext> context = Renderer::GetContext();
+                Ref<Swapchain> swapchain = context->GetSwapchain();
+                swapchain->Present();
             });
+
+            m_PerformanceStats.MainThreadWorkTime = workStopwatch.GetAsMilliseconds();
         }
 
         Close();
@@ -55,16 +55,11 @@ namespace Dodo {
     {
         m_RenderThread.Dispatch();
 
-        // Create window & set event callback.
-        WindowSpecs windowSpecs{};
-        windowSpecs.Width  = m_Specs.Width;
-        windowSpecs.Height = m_Specs.Height;
-        windowSpecs.Title  = m_Specs.Title;
-        m_Window = Window::Create(windowSpecs);
-        m_Window->SetEventCallback([this](Event& e) { OnEvent(e); });
+        m_Window = Window::Create(m_Specs.WindowSpecs);
         m_Window->Init();
+        m_Window->SetEventCallback([this](Event& e) { OnEvent(e); });
 
-        Renderer::Init();
+        Renderer::Init(m_Specs.RendererSpecs);
 
         // Render one frame.
         m_RenderThread.Pump();
@@ -79,9 +74,10 @@ namespace Dodo {
 
     bool Application::OnWindowResize(WindowResizeEvent& e)
     {
-        RenderThread::Submit([this, width = e.Width, height = e.Height]() {
-            Ref<Swapchain> swapchain = m_Window->GetSwapchain();
-            swapchain->OnResize_RenderThread(width, height);
+        RenderThread::Submit([width = e.Width, height = e.Height]() {
+            const Ref<RenderContext> context = Renderer::GetContext();
+            Ref<Swapchain> swapchain = context->GetSwapchain();
+            swapchain->OnResize(width, height);
         });
         return false;
     }
@@ -96,11 +92,9 @@ namespace Dodo {
     {
         m_RenderThread.Stop();
 
-        // Reset & destroy window.
         m_Window->SetEventCallback([](Event&) {});
         m_Window->Destroy();
 
-        // Renderer needs to be destroyed after the window!
         Renderer::Destroy();
     }
 

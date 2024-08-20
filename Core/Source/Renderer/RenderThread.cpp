@@ -29,7 +29,7 @@ namespace Dodo {
         m_IsRunning = true;
         if (m_ThreadPolicy == ThreadPolicy::MultiThreaded)
         {
-            m_Thread = std::thread(RenderThread::RenderProc, this);
+            m_Thread = std::thread(RenderThread::Run, this);
             Platform::SetThreadName(m_Thread, "Render Thread");
             Platform::SetThreadAffinity(m_Thread, 0);
         }
@@ -64,7 +64,7 @@ namespace Dodo {
         }
     }
 
-    void RenderThread::RenderProc(RenderThread* renderThread)
+    void RenderThread::Run(RenderThread* renderThread)
     {
         while (renderThread->IsRunning())
         {
@@ -74,7 +74,7 @@ namespace Dodo {
 
     void RenderThread::WaitAndRender(RenderThread* renderThread)
     {
-        auto& performanceStats = renderThread->m_PerformanceStats;
+        PerformanceStats& performanceStats = renderThread->m_PerformanceStats;
         {
             Stopwatch stopwatch{};
             renderThread->WaitAndUpdate(State::Kick, State::Busy);

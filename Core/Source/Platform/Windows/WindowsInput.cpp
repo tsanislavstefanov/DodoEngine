@@ -9,7 +9,7 @@ namespace Dodo {
 
     namespace Utils {
 
-        static KeyCode ConvertToKeyCode(SHORT virtualKey)
+        static KeyCode ConvertVirtualKeyToKeyCode(SHORT virtualKey)
         {
             switch (virtualKey)
             {
@@ -50,7 +50,7 @@ namespace Dodo {
         Reset();
     }
 
-    bool WindowsKeyboard::Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam)
+    bool WindowsKeyboard::WndProc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam)
     {
         switch (msg)
         {
@@ -59,12 +59,21 @@ namespace Dodo {
             case WM_KEYDOWN:
             case WM_KEYUP:
             {
-                const auto    virtualKey = static_cast<short>(wparam);
-                const KeyCode keyCode    = Utils::ConvertToKeyCode(virtualKey);
-                return (HIWORD(lparam) & KF_UP) ? OnKeyUp(keyCode) : OnKeyDown(keyCode);
+                const auto virtualKey = static_cast<SHORT>(wparam);
+                const KeyCode keyCode = Utils::ConvertVirtualKeyToKeyCode(virtualKey);
+                if (HIWORD(lparam) & KF_UP)
+                {
+                    OnKeyUp(keyCode);
+                }
+                else
+                {
+                    OnKeyDown(keyCode);
+                }
+
+                return true;
             }
 
-            default: break;
+            default: { break; }
         }
 
         return false;
@@ -79,7 +88,7 @@ namespace Dodo {
         Reset();
     }
 
-    bool WindowsMouse::Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam)
+    bool WindowsMouse::WndProc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam)
     {
         switch (msg)
         {
@@ -108,7 +117,7 @@ namespace Dodo {
                 return true;
             }
 
-            default: break;
+            default: { break; }
         }
 
         return false;
@@ -121,7 +130,7 @@ namespace Dodo {
     struct WindowsInputData
     {
         WindowsKeyboard Keyboard{};
-        WindowsMouse    Mouse{};
+        WindowsMouse Mouse{};
     };
 
     static WindowsInputData s_Data{};
@@ -133,17 +142,17 @@ namespace Dodo {
     void WindowsInput::Init()
     {
         Keyboard = &s_Data.Keyboard;
-        Mouse    = &s_Data.Mouse;
+        Mouse = &s_Data.Mouse;
     }
 
-    bool WindowsInput::Win32Proc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam)
+    bool WindowsInput::WndProc(HWND handle, UINT msg, WPARAM wparam, LPARAM lparam)
     {
-        if (s_Data.Keyboard.Win32Proc(handle, msg, wparam, lparam))
+        if (s_Data.Keyboard.WndProc(handle, msg, wparam, lparam))
         {
             return true;
         }
         
-        if (s_Data.Mouse.Win32Proc(handle, msg, wparam, lparam))
+        if (s_Data.Mouse.WndProc(handle, msg, wparam, lparam))
         {
             return true;
         }

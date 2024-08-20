@@ -1,50 +1,25 @@
 #include "pch.h"
 #include "Renderer.h"
-#include "RenderApi.h"
-#include "Core/Application.h"
-#include "Drivers/Vulkan/VulkanRenderApi.h"
 
 namespace Dodo {
-
-    ////////////////////////////////////////////////////////////////
-    // UTILS ///////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    namespace Utils {
-
-        static RenderApi* CreateRenderApi(RenderApiType apiType)
-        {
-            switch (apiType)
-            {
-                case RenderApiType::Vulkan : return new VulkanRenderApi();
-                default                    : return nullptr;
-            }
-        }
-
-    }
-
-    ////////////////////////////////////////////////////////////////
-    // DATA ////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////
-
-    static RenderSettings s_RenderSettings{};
-    static RenderApi* s_RenderApi = nullptr;
 
     ////////////////////////////////////////////////////////////////
     // RENDERER ////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    void Renderer::Init()
+    static Renderer::Data s_Data{};
+
+    void Renderer::Init(const RendererSpecs& specs)
     {
-        const auto& app = Application::GetCurrent();
-        s_RenderSettings = app.GetSpecs().RenderSettings;
-        s_RenderApi = Utils::CreateRenderApi(s_RenderSettings.RenderApiType);
+        s_Data.Specs = specs;
+        s_Data.Context = RenderContext::Create(s_Data.Specs.DeviceDriverType);
+        s_Data.DeviceDriver = s_Data.Context->CreateDeviceDriver();
     }
 
     void Renderer::Destroy()
     {
-        delete s_RenderApi;
-        s_RenderApi = nullptr;
+        s_Data.DeviceDriver->Destroy();
+        s_Data.Context->Destroy();
     }
 
 }
