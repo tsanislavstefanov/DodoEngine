@@ -82,8 +82,7 @@ namespace Dodo {
         }
 
         Stopwatch stopwatch{};
-        auto& renderQueue = renderThread->GetRenderQueue();
-        renderQueue.Execute();
+        renderThread->GetRenderQueue().Execute();
         // Render done!
         renderThread->Update(State::Idle);
         performanceStats.WorkTime = stopwatch.GetAsMilliseconds();

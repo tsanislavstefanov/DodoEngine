@@ -9,7 +9,7 @@ namespace Dodo {
 
     void RenderCommandQueue::Execute()
     {
-        for (const auto& cmd : m_Commands)
+        for (const RenderCommand& cmd : m_Commands)
         {
             cmd();
         }

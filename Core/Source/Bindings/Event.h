@@ -81,7 +81,7 @@ namespace Dodo {
             
             if (m_Event.GetType() == T::GetStaticType())
             {
-                m_Event.Handled |= eventAction(static_cast<T&>(m_Event));
+                m_Event.m_Handled |= eventAction(static_cast<T&>(m_Event));
             }
         }
 

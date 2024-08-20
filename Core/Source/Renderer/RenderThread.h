@@ -12,11 +12,10 @@ namespace Dodo {
     class RenderThread
     {
     public:
-        template<typename RenderCommand>
-        static inline void Submit(RenderCommand&& cmd)
+        static void Submit(const RenderCommand& cmd)
         {
-            auto& submissionQueue = s_Instance->GetSubmissionQueue();
-            submissionQueue.Submit<RenderCommand>(std::forward<RenderCommand>(cmd));
+            RenderCommandQueue& queue = s_Instance->GetSubmissionQueue();
+            queue.Submit(cmd);
         }
 
         ////////////////////////////////////////////////////////////
@@ -81,7 +80,7 @@ namespace Dodo {
             return m_CommandQueues.at(index);
         }
 
-        static constexpr uint32_t MaxCommandQueueCount = 2;
+        static constexpr auto MaxCommandQueueCount = 2;
         static RenderThread* s_Instance;
         ThreadPolicy m_ThreadPolicy = ThreadPolicy::None;
         bool m_IsRunning = false;
