@@ -21,7 +21,7 @@ namespace Dodo {
 
         virtual ~RenderContext() = default;
 
-        virtual Ref<RenderDevice> CreateDeviceDriver() const = 0;
+        virtual Ref<RenderDeviceDriver> CreateDeviceDriver() const = 0;
 
         virtual void Destroy() = 0;
 

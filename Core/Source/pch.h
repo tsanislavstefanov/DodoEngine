@@ -51,5 +51,4 @@
 #       define NOMINMAX
 #   endif
 #   include <Windows.h>
-#   include <processthreadsapi.h>
 #endif

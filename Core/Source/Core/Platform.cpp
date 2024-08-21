@@ -1,6 +1,10 @@
 #include "pch.h"
 #include "Platform.h"
 
+#ifdef DODO_WINDOWS
+#   include <processthreadsapi.h>
+#endif
+
 namespace Dodo {
 
     ////////////////////////////////////////////////////////////////

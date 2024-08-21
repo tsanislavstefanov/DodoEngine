@@ -17,7 +17,7 @@ namespace Dodo {
     // RENDER DEVICE DRIVER ////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    class RenderDeviceDriver
+    class RenderDeviceDriver : public RefCounted
     {
     public:
 

@@ -16,7 +16,7 @@ namespace Dodo {
     {
         DODO_ASSERT(!s_Instance, "RenderThread instance already exists!");
         s_Instance = this;
-        
+
         // Create command queues.
         for (size_t i = 0; i < MaxCommandQueueCount; i++)
         {

@@ -8,9 +8,9 @@ namespace Dodo {
 
     enum class VSyncMode
     {
-        Disable  ,
-        Enable   ,
-        Mailbox  ,
+        Disable,
+        Enable,
+        Mailbox,
         AutoCount,
         None
     };

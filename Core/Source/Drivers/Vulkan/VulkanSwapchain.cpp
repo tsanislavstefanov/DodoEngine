@@ -24,12 +24,10 @@ namespace Dodo {
             VkSurfaceKHR surface = VK_NULL_HANDLE;
 #ifdef DODO_WINDOWS
             VkWin32SurfaceCreateInfoKHR createInfo{};
-            createInfo.sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+            createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
             createInfo.hinstance = GetModuleHandleW(nullptr);
-            createInfo.hwnd      = static_cast<HWND>(windowHandle);
+            createInfo.hwnd = static_cast<HWND>(windowHandle);
             DODO_VK_RESULT(vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface));
-#else
-            ASSERT(false, "Platform not supported!");
 #endif
             return surface;
         }
@@ -50,7 +48,7 @@ namespace Dodo {
     }
 
     ////////////////////////////////////////////////////////////////
-    // VULKAN SWAPCHAIN DATA ///////////////////////////////////////
+    // VULKAN EXTENSION FUNCTIONS //////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
     static PFN_vkGetPhysicalDeviceSurfaceSupportKHR      pfnGetPhysicalDeviceSurfaceSupportKHR      = nullptr;

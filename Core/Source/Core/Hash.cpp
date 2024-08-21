@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Hasher.h"
+#include "Hash.h"
 
 namespace Dodo {
 
@@ -29,7 +29,7 @@ namespace Dodo {
     // HASHER //////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    size_t Hasher::GenerateFnv1a(const std::string & octets)
+    size_t Hash::GenerateFnv1a(const std::string & octets)
     {
         // Online: http://www.isthe.com/chongo/tech/comp/fnv/
         using Fnv = FnvTraits<size_t>;

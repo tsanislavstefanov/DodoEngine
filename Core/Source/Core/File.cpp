@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "FileSystem.h"
+#include "File.h"
 
 namespace Dodo {
 
@@ -25,10 +25,10 @@ namespace Dodo {
     }
 
     ////////////////////////////////////////////////////////////////
-    // FILE SYSTEM /////////////////////////////////////////////////
+    // FILE ////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    std::string FileSystem::ReadFileAndSkipBom(const std::filesystem::path& filePath)
+    std::string File::ReadAndSkipBom(const std::filesystem::path& filePath)
     {
         std::ifstream is(filePath, std::ios::binary);
         if (!is)
