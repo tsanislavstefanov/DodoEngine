@@ -176,7 +176,11 @@ namespace Dodo {
         }
     }
 
-    void VulkanSwapchain::BeginFrame_RenderThread()
+    VulkanSwapchain::VulkanSwapchain(void *windowHandle, uint32_t windowWidth, uint32_t windowHeight)
+    {
+    }
+
+    void VulkanSwapchain::BeginFrame()
     {
         static constexpr uint64_t defaultFenceTimeout = std::numeric_limits<uint64_t>::max();
         // Wait for the fence associated with the current frame to signal completion.

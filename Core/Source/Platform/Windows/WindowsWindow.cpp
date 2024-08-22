@@ -50,11 +50,7 @@ namespace Dodo {
         SetWindowLongPtrW(handle, GWLP_USERDATA, reinterpret_cast<LPARAM>(&m_Data));
         ShowWindow(handle, SW_SHOWDEFAULT);
         SetFocus(handle);
-    }
 
-    void WindowsWindow::Init()
-    {
-        // Init supported input devices.
         WindowsInput::Init();
     }
 

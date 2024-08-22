@@ -26,12 +26,13 @@ namespace Dodo {
     };
 
     ////////////////////////////////////////////////////////////////
-    // HASHER //////////////////////////////////////////////////////
+    // HASH ////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    size_t Hash::GenerateFnv1a(const std::string & octets)
+    size_t Hash::GenerateFnv1a(const std::string& octets)
     {
-        // Online: http://www.isthe.com/chongo/tech/comp/fnv/
+        // Reference for the algorithm and the values for
+        // prime and offset basis found online: http://www.isthe.com/chongo/tech/comp/fnv/.
         using Fnv = FnvTraits<size_t>;
         size_t hash = Fnv::OffsetBasis;
         for (char octet : octets)

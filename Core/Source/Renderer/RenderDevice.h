@@ -3,15 +3,13 @@
 namespace Dodo {
 
     ////////////////////////////////////////////////////////////////
-    // RENDER CONTEXT //////////////////////////////////////////////
+    // RENDER DEVICE ///////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    class RenderContext : public RefCounted
+    class RenderDevice : public RefCounted
     {
     public:
-        static Ref<RenderContext> Create();
-
-        virtual ~RenderContext() = default;
+        virtual ~RenderDevice() = default;
 
         virtual void Destroy() = 0;
     };

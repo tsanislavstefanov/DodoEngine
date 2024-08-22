@@ -1,10 +1,33 @@
 #pragma once
 
-#include "RenderContext.h"
-#include "RenderDeviceDriver.h"
-#include "VSyncMode.h"
+#include "RenderCommandQueue.h"
+#include "RenderThread.h"
 
 namespace Dodo {
+
+    ////////////////////////////////////////////////////////////////
+    // RENDER DEVICE TYPE //////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    enum class RenderDeviceType
+    {
+        Vulkan,
+        AutoCount,
+        None
+    };
+
+    ////////////////////////////////////////////////////////////////
+    // V-SYNC MODE /////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////
+
+    enum class VSyncMode
+    {
+        Disable,
+        Enable,
+        Fast,
+        AutoCount,
+        None
+    };
 
     ////////////////////////////////////////////////////////////////
     // RENDERER SPECS //////////////////////////////////////////////
@@ -12,7 +35,6 @@ namespace Dodo {
 
     struct RendererSpecs
     {
-        RenderDeviceDriverType DeviceDriverType = RenderDeviceDriverType::None;
         uint32_t ConcurrentFrameCount = 3;
         VSyncMode VSyncMode = VSyncMode::None;
     };
@@ -25,33 +47,23 @@ namespace Dodo {
     {
     public:
         static void Init(const RendererSpecs& specs);
-
         static void Destroy();
 
-        static const RendererSpecs& GetSpecs()
-        {
-            return s_Data.Specs;
-        }
-
-        static Ref<RenderContext> GetContext()
-        {
-            return s_Data.Context;
-        }
-
-    private:
+        static void Submit(const RenderCommand& cmd);
+        static void WaitAndRender(RenderThread* renderThread);
+        static void SwapQueues();
 
         ////////////////////////////////////////////////////////////
-        // DATA ////////////////////////////////////////////////////
+        // PERFORMANCE STATS ///////////////////////////////////////
         ////////////////////////////////////////////////////////////
 
-        struct Data
+        struct PerformanceStats
         {
-            RendererSpecs Specs{};
-            Ref<RenderContext> Context = nullptr;
-            Ref<RenderDeviceDriver> DeviceDriver = nullptr;
+            double WaitTime = 0.0;
+            double WorkTime = 0.0;
         };
-
-        static Data s_Data;
+        
+        const PerformanceStats& GetPerformanceStats() const;
     };
 
 }

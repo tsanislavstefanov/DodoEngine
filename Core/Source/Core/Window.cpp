@@ -21,13 +21,22 @@ namespace Dodo {
 #endif
     }
 
+    void Window::Init()
+    {
+        m_RenderContext = RenderContext::Create();
+        m_Swapchain = Swapchain::Create(m_Handle, m_Data.Width, m_Data.Height);
+    }
+
     void Window::ProcessEvents()
     {
-        // Prepare input devices for incoming events.
         Input::Update();
-
-        // Get incoming events.
         PollEvents();
+    }
+
+    void Window::Destroy()
+    {
+        m_Swapchain->Destroy();
+        m_RenderContext->Destroy();
     }
 
 }

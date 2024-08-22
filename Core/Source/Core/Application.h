@@ -33,6 +33,7 @@ namespace Dodo {
         WindowSpecs WindowSpecs{};
         bool EnableImGui = false;
         ThreadPolicy ThreadPolicy = ThreadPolicy::None;
+        RenderDeviceType RenderDeviceType = RenderDeviceType::None;
         RendererSpecs RendererSpecs{};
     };
 
@@ -43,9 +44,24 @@ namespace Dodo {
     class Application
     {
     public:
-        static inline Application& GetCurrent()
+        static Application& GetCurrent()
         {
             return *s_Instance;
+        }
+
+        Application(const ApplicationSpecs& specs);
+        virtual ~Application() = default;
+
+        void Run();
+
+        const ApplicationSpecs& GetSpecs() const
+        {
+            return m_Specs;
+        }
+
+        const Ref<Window>& GetWindow() const
+        {
+            return m_Window;
         }
 
         ////////////////////////////////////////////////////////////
@@ -58,35 +74,16 @@ namespace Dodo {
             double MainThreadWorkTime = 0.0;
         };
 
-        Application(const ApplicationSpecs& specs);
-        virtual ~Application() = default;
-
-        void Run();
-
-        const ApplicationSpecs& GetSpecs() const
-        {
-            return m_Specs;
-        }
-
-        Ref<Window> GetWindow() const
-        {
-            return m_Window;
-        }
-
-        const PerformanceStats& GetStats() const
+        const PerformanceStats& GetPerformanceStats() const
         {
             return m_PerformanceStats;
         }
 
     private:
         void Init();
-
         void OnEvent(Event& e);
-
         bool OnWindowResize(WindowResizeEvent& e);
-
         bool OnWindowClose(WindowCloseEvent& e);
-
         void Close();
 
         static Application* s_Instance;

@@ -10,7 +10,6 @@ namespace Dodo {
     // FORWARD DECLARATIONS ////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    class Window;
     class VulkanDevice;
 
     ////////////////////////////////////////////////////////////////
@@ -20,11 +19,12 @@ namespace Dodo {
     class VulkanSwapchain : public Swapchain
     {
     public:
-        VulkanSwapchain();
+        VulkanSwapchain(void* windowHandle, uint32_t windowWidth, uint32_t windowHeight);
 
-        void BeginFrame_RenderThread() override;
-        void OnResize_RenderThread(uint32_t width, uint32_t height) override;
-        void Present_RenderThread() override;
+        // Inherited via [Swapchain].
+        void BeginFrame() override;
+        void EndFrame(uint32_t width, uint32_t height) override;
+        void ResizeViewport() override;
         void Destroy() override;
 
         uint32_t GetImageCount() const

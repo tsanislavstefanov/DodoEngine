@@ -13,10 +13,8 @@ namespace Dodo {
     public:
         WindowsWindow(const WindowSpecs& specs);
 
-        // Inherited via [Window].
-        void Init() override;
-
     protected:
+        // Inherited via [Window].
         void PollEvents() override;
 
     private:

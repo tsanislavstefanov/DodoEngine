@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "RenderThread.h"
+#include "Renderer.h"
 #include "Core/Platform.h"
-#include "Diagnostics/Stopwatch.h"
 
 namespace Dodo {
 
@@ -9,27 +9,12 @@ namespace Dodo {
     // RENDER THREAD ///////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    RenderThread* RenderThread::s_Instance = nullptr;
-
-    RenderThread::RenderThread(ThreadPolicy threadPolicy)
-        : m_ThreadPolicy(threadPolicy)
-    {
-        DODO_ASSERT(!s_Instance, "RenderThread instance already exists!");
-        s_Instance = this;
-
-        // Create command queues.
-        for (size_t i = 0; i < MaxCommandQueueCount; i++)
-        {
-            m_CommandQueues.emplace_back();
-        }
-    }
-
     void RenderThread::Dispatch()
     {
         m_IsRunning = true;
         if (m_ThreadPolicy == ThreadPolicy::MultiThreaded)
         {
-            m_Thread = std::thread(RenderThread::Run, this);
+            m_Thread = std::thread(Run, this);
             Platform::SetThreadName(m_Thread, "Render Thread");
             Platform::SetThreadAffinity(m_Thread, 0);
         }
@@ -51,7 +36,7 @@ namespace Dodo {
 
     void RenderThread::NextFrame()
     {
-        SwapQueues();
+        Renderer::SwapQueues();
         Kick();
     }
 
@@ -64,30 +49,6 @@ namespace Dodo {
         }
     }
 
-    void RenderThread::Run(RenderThread* renderThread)
-    {
-        while (renderThread->IsRunning())
-        {
-            WaitAndRender(renderThread);
-        }
-    }
-
-    void RenderThread::WaitAndRender(RenderThread* renderThread)
-    {
-        PerformanceStats& performanceStats = renderThread->m_PerformanceStats;
-        {
-            Stopwatch stopwatch{};
-            renderThread->WaitAndUpdate(State::Kick, State::Busy);
-            performanceStats.WaitTime = stopwatch.GetAsMilliseconds();
-        }
-
-        Stopwatch stopwatch{};
-        renderThread->GetRenderQueue().Execute();
-        // Render done!
-        renderThread->Update(State::Idle);
-        performanceStats.WorkTime = stopwatch.GetAsMilliseconds();
-    }
-
     void RenderThread::Kick()
     {
         if (m_ThreadPolicy == ThreadPolicy::MultiThreaded)
@@ -96,7 +57,7 @@ namespace Dodo {
         }
         else
         {
-            WaitAndRender(this);
+            Renderer::WaitAndRender(this);
         }
     }
 
@@ -130,9 +91,12 @@ namespace Dodo {
         }
     }
 
-    void RenderThread::SwapQueues()
+    void Run(RenderThread* renderThread)
     {
-        m_SubmissionQueueIndex = (m_SubmissionQueueIndex + 1) % MaxCommandQueueCount;
+        if (renderThread->IsRunning())
+        {
+            Renderer::WaitAndRender(renderThread);
+        }
     }
 
 }

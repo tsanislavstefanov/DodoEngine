@@ -6,10 +6,10 @@ namespace Dodo {
     // HASH ////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
-    class Hash
-    {
-    public:
+    namespace Hash {
+
         static size_t GenerateFnv1a(const std::string& octets);
+
     };
 
 }

@@ -1,7 +1,6 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
-
+#include "VulkanDevice.h"
 #include "Renderer/RenderContext.h"
 
 namespace Dodo {
@@ -23,21 +22,22 @@ namespace Dodo {
             return s_ApiVersion;
         }
 
-        static VkInstance GetVulkanInstance()
-        {
-            return s_Context->m_Instance;
-        }
-
         VulkanContext();
 
-        // Inherited via [RenderContext].
-        Ref<RenderDeviceDriver> CreateDeviceDriver() const override;
+        VkInstance GetVulkanInstance() const
+        {
+            return m_Instance;
+        }
 
+        // Inherited via [RenderContext].
         void Destroy() override;
 
-        Ref<Swapchain> GetSwapchain() const override;
-
     private:
+        static VKAPI_ATTR VkBool32 VKAPI_CALL ReportDebugMessage(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                                                                 VkDebugUtilsMessageTypeFlagsEXT messageType,
+                                                                 const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
+                                                                 void* userData);
+
         static VulkanContext* s_Context;
         static constexpr uint32_t s_ApiVersion = VK_API_VERSION_1_0;
         std::set<std::string> m_SupportedExtensions{}, m_EnabledExtensions{};
@@ -46,6 +46,7 @@ namespace Dodo {
         bool m_LayerFound = false;
         VkInstance m_Instance = VK_NULL_HANDLE;
         VkDebugUtilsMessengerEXT m_Messenger = VK_NULL_HANDLE;
+        Ref<VulkanDevice> m_Device = nullptr;
     };
 
 }

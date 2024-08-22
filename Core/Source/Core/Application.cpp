@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "Application.h"
-#include "Renderer/Swapchain.h"
 
 namespace Dodo {
 
@@ -29,20 +28,16 @@ namespace Dodo {
 
             Stopwatch workStopwatch{};
             m_Window->ProcessEvents();
-            
-            // Kick RenderThread to render previous frame [N - 1].
             m_RenderThread.NextFrame();
 
-            RenderThread::Submit([]() {
-                const Ref<RenderContext> context = Renderer::GetContext();
-                Ref<Swapchain> swapchain = context->GetSwapchain();
+            Renderer::Submit([this]() {
+                Ref<Swapchain> swapchain = m_Window->GetSwapchain();
                 swapchain->BeginFrame();
             });
 
-            RenderThread::Submit([]() {
-                const Ref<RenderContext> context = Renderer::GetContext();
-                Ref<Swapchain> swapchain = context->GetSwapchain();
-                swapchain->Present();
+            Renderer::Submit([this]() {
+                Ref<Swapchain> swapchain = m_Window->GetSwapchain();
+                swapchain->EndFrame();
             });
 
             m_PerformanceStats.MainThreadWorkTime = workStopwatch.GetAsMilliseconds();
@@ -53,15 +48,12 @@ namespace Dodo {
 
     void Application::Init()
     {
-        m_RenderThread.Dispatch();
-
         m_Window = Window::Create(m_Specs.WindowSpecs);
         m_Window->Init();
         m_Window->SetEventCallback([this](Event& e) { OnEvent(e); });
 
+        m_RenderThread.Dispatch();
         Renderer::Init(m_Specs.RendererSpecs);
-
-        // Render one frame.
         m_RenderThread.Pump();
     }
 
@@ -74,11 +66,11 @@ namespace Dodo {
 
     bool Application::OnWindowResize(WindowResizeEvent& e)
     {
-        RenderThread::Submit([width = e.Width, height = e.Height]() {
-            const Ref<RenderContext> context = Renderer::GetContext();
-            Ref<Swapchain> swapchain = context->GetSwapchain();
-            swapchain->OnResize(width, height);
+        Renderer::Submit([this, width = e.Width, height = e.Height]() {
+            Ref<Swapchain> swapchain = m_Window->GetSwapchain();
+            swapchain->ResizeViewport(width, height);
         });
+
         return false;
     }
 

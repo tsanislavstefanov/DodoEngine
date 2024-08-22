@@ -1,13 +1,10 @@
 #include "pch.h"
+#include "Vulkan.h"
 #include "VulkanContext.h"
 
 #ifdef DODO_WINDOWS
 #   include <vulkan/vulkan_win32.h>
 #endif
-
-#include "VulkanCommon.h"
-#include "VulkanDeviceDriver.h"
-#include "VulkanSwapchain.h"
 
 namespace Dodo {
 
@@ -40,10 +37,9 @@ namespace Dodo {
                 case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT    : return "Info";
                 case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT : return "Warning";
                 case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT   : return "Error";
-                default                                              : return "Unknown";
             }
 
-            return "";
+            return "Unknown";
         }
 
         static const char* ConvertMessageTypeToString(VkDebugUtilsMessageTypeFlagsEXT messageType)
@@ -53,23 +49,9 @@ namespace Dodo {
                 case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT     : return "General";
                 case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT  : return "Validation";
                 case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT : return "Performance";
-                default                                              : return "Unknown";
             }
 
-            return "";
-        }
-
-        static VKAPI_ATTR VkBool32 VKAPI_CALL ReportDebugMessage(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                                                                 VkDebugUtilsMessageTypeFlagsEXT messageType,
-                                                                 const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
-                                                                 void* userData)
-        {
-            (void)userData; // Unused.
-            LOG_CORE_DEBUG("Vulkan validation report...");
-            LOG_CORE_DEBUG("    Severity: {0}.", ConvertMessageSeverityToString(messageSeverity));
-            LOG_CORE_DEBUG("    Type: {0}."    , ConvertMessageTypeToString(messageType));
-            LOG_CORE_DEBUG("    Message: {0}." , callbackData->pMessage);
-            return VK_FALSE;
+            return "Unknown";
         }
 
     }
@@ -82,7 +64,7 @@ namespace Dodo {
     static PFN_vkDestroyDebugUtilsMessengerEXT pfnDestroyDebugUtilsMessengerEXT = nullptr;
 
     ////////////////////////////////////////////////////////////////
-    // VULKAN RENDER CONTEXT ///////////////////////////////////////
+    // VULKAN CONTEXT //////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////
 
     VulkanContext* VulkanContext::s_Context = nullptr;
@@ -94,7 +76,6 @@ namespace Dodo {
 
         DODO_VERIFY(Utils::CheckDriverVersionSupport(s_ApiVersion));
 
-        // Get supported extensions.
         uint32_t extensionCount = 0;
         DODO_VK_RESULT(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr));
         std::vector<VkExtensionProperties> extensions(extensionCount);
@@ -104,15 +85,13 @@ namespace Dodo {
             m_SupportedExtensions.insert(extension.extensionName);
         }
 
-        // Request extensions.
         m_RequestedExtensions.insert({ VK_KHR_SURFACE_EXTENSION_NAME, true });
 #ifdef DODO_WINDOWS
         m_RequestedExtensions.insert({ VK_KHR_WIN32_SURFACE_EXTENSION_NAME, true });
 #endif
         m_RequestedExtensions.insert({ VK_EXT_DEBUG_UTILS_EXTENSION_NAME, false });
 
-        // Enable requested & supported extensions.
-        for (const auto& [name, required] : requestedExtensions)
+        for (const auto& [name, required] : m_RequestedExtensions)
         {
             if (!m_SupportedExtensions.contains(name))
             {
@@ -130,7 +109,6 @@ namespace Dodo {
             m_EnabledExtensions.insert(name);
         }
 
-        // Find validation layer(s).
         if (m_EnabledExtensions.contains(VK_EXT_DEBUG_UTILS_EXTENSION_NAME))
         {
             uint32_t layerCount = 0;
@@ -147,22 +125,21 @@ namespace Dodo {
             }
         }
 
-        // Prepare enabled extensions for Vulkan.
+        // This step is required to prepare the data
+        // in a Vulkan friendly format.
         std::vector<const char*> enabledExtensions{};
         for (const auto& extension : m_EnabledExtensions)
         {
             enabledExtensions.push_back(extension.c_str());
         }
 
-        // Create instance.
         VkApplicationInfo appInfo{};
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         appInfo.pApplicationName = "Dodo Engine";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.pEngineName = "Dodo";
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-        appInfo.apiVersion = m_ApiVersion;
-
+        appInfo.apiVersion = s_ApiVersion;
         VkInstanceCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         createInfo.pApplicationInfo = &appInfo;
@@ -174,24 +151,16 @@ namespace Dodo {
 
         if (m_LayerFound)
         {
-            // Create debug messenger.
-            GET_VK_INSTANCE_PROC_ADDR(m_Instance, CreateDebugUtilsMessengerEXT);
             VkDebugUtilsMessengerCreateInfoEXT createInfo{};
             createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
             createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
             createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-            createInfo.pfnUserCallback = Utils::ReportDebugMessage;
+            createInfo.pfnUserCallback = ReportDebugMessage;
+            GET_VK_INSTANCE_PROC_ADDR(m_Instance, CreateDebugUtilsMessengerEXT);
             DODO_VK_RESULT(pfnCreateDebugUtilsMessengerEXT(m_Instance, &createInfo, nullptr, &m_Messenger));
         }
 
-        // Create (logical & physical) device(s).
         m_Device = Ref<VulkanDevice>::Create(m_Instance);
-        VulkanAllocator::Init();
-    }
-
-    Ref<RenderDeviceDriver> VulkanContext::CreateDeviceDriver() const
-    {
-        return Ref<RenderDeviceDriver>();
     }
 
     void VulkanContext::Destroy()
@@ -199,13 +168,24 @@ namespace Dodo {
         m_Device->Destroy();
         if (m_LayerFound)
         {
-            // Destroy debug messenger.
             GET_VK_INSTANCE_PROC_ADDR(m_Instance, DestroyDebugUtilsMessengerEXT);
             pfnDestroyDebugUtilsMessengerEXT(m_Instance, m_Messenger, nullptr);
         }
 
         vkDestroyInstance(m_Instance, nullptr);
-        VulkanAllocator::Destroy();
+    }
+
+    VKAPI_ATTR VkBool32 VKAPI_CALL VulkanContext::ReportDebugMessage(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                                                                     VkDebugUtilsMessageTypeFlagsEXT messageType,
+                                                                     const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
+                                                                     void* userData)
+    {
+        (void)userData; // Unused.
+        LOG_CORE_DEBUG("Vulkan validation report...");
+        LOG_CORE_DEBUG("    Severity: {0}.", Utils::ConvertMessageSeverityToString(messageSeverity));
+        LOG_CORE_DEBUG("    Type: {0}."    , Utils::ConvertMessageTypeToString(messageType));
+        LOG_CORE_DEBUG("    Message: {0}." , callbackData->pMessage);
+        return VK_FALSE;
     }
 
 }

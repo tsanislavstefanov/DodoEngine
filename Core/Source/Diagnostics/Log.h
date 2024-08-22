@@ -1,6 +1,6 @@
 #pragma once
 
-#include "spdlog/spdlog.h"
+#include <spdlog/spdlog.h>
 
 namespace Dodo {
 
@@ -78,11 +78,11 @@ namespace Dodo {
 }
 
 #ifdef DODO_DEBUG
-#   define LOG_CORE_DEBUG(...)   Dodo::Log::GetCoreLogger()->LogDebug  (__VA_ARGS__)
-#   define LOG_CORE_INFO(...)    Dodo::Log::GetCoreLogger()->LogInfo   (__VA_ARGS__)
-#   define LOG_CORE_WARNING(...) Dodo::Log::GetCoreLogger()->LogWarning(__VA_ARGS__)
-#   define LOG_CORE_ERROR(...)   Dodo::Log::GetCoreLogger()->LogError  (__VA_ARGS__)
-#   define LOG_CORE_FATAL(...)   Dodo::Log::GetCoreLogger()->LogFatal  (__VA_ARGS__)
+#   define LOG_CORE_DEBUG(...)   Dodo::Log::GetCoreLogger()->trace   (__VA_ARGS__)
+#   define LOG_CORE_INFO(...)    Dodo::Log::GetCoreLogger()->info    (__VA_ARGS__)
+#   define LOG_CORE_WARNING(...) Dodo::Log::GetCoreLogger()->warn    (__VA_ARGS__)
+#   define LOG_CORE_ERROR(...)   Dodo::Log::GetCoreLogger()->error   (__VA_ARGS__)
+#   define LOG_CORE_FATAL(...)   Dodo::Log::GetCoreLogger()->critical(__VA_ARGS__)
 #else
 #   define LOG_CORE_DEBUG(...)
 #   define LOG_CORE_INFO(...)

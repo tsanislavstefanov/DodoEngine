@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Bindings/Event.h"
+#include "Renderer/RenderContext.h"
+#include "Renderer/Swapchain.h"
 
 namespace Dodo {
 
@@ -53,12 +55,20 @@ namespace Dodo {
 
         virtual ~Window() = default;
 
-        virtual void Init() {}
-
+        void Init();
         void ProcessEvents();
+        void Destroy();
 
-        virtual void Destroy() {}
-        
+        void SetEventCallback(const EventCallback& eventCallback)
+        {
+            m_Data.EventCallback = eventCallback;
+        }
+
+        Ref<Swapchain> GetSwapchain() const
+        {
+            return m_Swapchain;
+        }
+
         void* GetHandle() const
         {
             return m_Handle;
@@ -74,14 +84,7 @@ namespace Dodo {
             return m_Data.Height;
         }
 
-        void SetEventCallback(const EventCallback& eventCallback)
-        {
-            m_Data.EventCallback = eventCallback;
-        }
-
     protected:
-        virtual void PollEvents() = 0;
-
         ////////////////////////////////////////////////////////////
         // WINDOW DATA /////////////////////////////////////////////
         ////////////////////////////////////////////////////////////
@@ -92,8 +95,12 @@ namespace Dodo {
             EventCallback EventCallback{};
         };
 
+        virtual void PollEvents() = 0;
+
         void* m_Handle = nullptr;
         WindowData m_Data{};
+        Ref<RenderContext> m_RenderContext = nullptr;
+        Ref<Swapchain> m_Swapchain = nullptr;
     };
 
 }
