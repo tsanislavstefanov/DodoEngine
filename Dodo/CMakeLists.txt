@@ -1,0 +1,31 @@
+cmake_minimum_required(VERSION 3.27.1)
+project(DodoEngine VERSION 1.0)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+
+add_executable(DODO ${SOURCES} ${THIRD_PARTY_SOURCES})
+
+find_package(Vulkan REQUIRED)
+
+if(THIRD_PARTY_DEPENDENCIES)
+    add_dependencies(DODO ${THIRD_PARTY_DEPENDENCIES})
+endif()
+
+target_link_libraries(DODO PRIVATE ${Vulkan_LIBRARIES} ${THIRD_PARTY_LIBS})
+
+target_include_directories(DODO PUBLIC ${Vulkan_INCLUDE_DIRS} ${THIRD_PARTY_INCLUDES})
+target_include_directories(DODO PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_precompile_headers(DODO PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/pch.h)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_compile_definitions(DODO PRIVATE _WIN32)
+endif()
+
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG -D_DEBUG")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -D_RELEASE")
