@@ -1,5 +1,13 @@
 #pragma once
 
+#include <cstdint>
+#include <filesystem>
+#include <map>
+#include <string>
+#include <vector>
+
+#include <vulkan/vulkan.h>
+
 #include "Renderer/Shader.h"
 
 namespace Dodo {
@@ -7,9 +15,6 @@ namespace Dodo {
     struct VulkanShader
     {
         std::filesystem::path AssetPath{};
-        std::string Source{};
-        ShaderStageMetadata Metadata{};
-        std::vector<uint32_t> SPIRVData{};
     };
 
 }

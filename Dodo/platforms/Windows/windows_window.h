@@ -4,7 +4,7 @@
 
 namespace Dodo {
 
-    class WindowsWindow : public Window
+    class WindowsWindow : public RenderWindow
     {
     public:
         WindowsWindow(WindowSpecifications&& specs);

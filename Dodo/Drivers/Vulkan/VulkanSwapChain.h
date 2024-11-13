@@ -3,16 +3,16 @@
 #include "VulkanInstance.h"
 #include "VulkanDevice.h"
 #include "Renderer/SwapChain.h"
-#include "Renderer/VSyncMode.h"
+#include "Renderer/vsync_mode.h"
 
 namespace Dodo {
 
-    class Window;
+    class RenderWindow;
 
     class VulkanSwapChain : public SwapChain
     {
     public:
-        VulkanSwapChain(Ref<VulkanInstance> instance, Ref<VulkanDevice> device, const Window& targetWindow, VSyncMode vsyncMode);
+        VulkanSwapChain(Ref<VulkanInstance> instance, Ref<VulkanDevice> device, const RenderWindow& targetWindow, VSyncMode vsyncMode);
         ~VulkanSwapChain();
 
         void BeginFrame() override;
@@ -47,7 +47,7 @@ namespace Dodo {
         static constexpr auto FramesInFlight = 3;
         Ref<VulkanInstance> m_Instance = nullptr;
         Ref<VulkanDevice> m_Device = nullptr;
-        VSyncMode m_VSyncMode = VSyncMode::None;
+        VSyncMode m_VSyncMode = VSyncMode::none;
         VkSurfaceKHR m_Surface = VK_NULL_HANDLE;
 
         PFN_vkGetPhysicalDeviceSurfaceSupportKHR pfnGetPhysicalDeviceSurfaceSupportKHR = nullptr;

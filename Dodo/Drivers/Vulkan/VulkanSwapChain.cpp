@@ -11,9 +11,9 @@ namespace Dodo {
         {
             switch (vsync_mode)
             {
-                case VSyncMode::Disabled: return VK_PRESENT_MODE_IMMEDIATE_KHR;
-                case VSyncMode::Enabled:  return VK_PRESENT_MODE_FIFO_KHR;
-                case VSyncMode::Mailbox:  return VK_PRESENT_MODE_MAILBOX_KHR;
+                case VSyncMode::disabled: return VK_PRESENT_MODE_IMMEDIATE_KHR;
+                case VSyncMode::enabled:  return VK_PRESENT_MODE_FIFO_KHR;
+                case VSyncMode::mailbox:  return VK_PRESENT_MODE_MAILBOX_KHR;
                 default: break;
             }
 
@@ -23,7 +23,7 @@ namespace Dodo {
 
     }
 
-    VulkanSwapChain::VulkanSwapChain(Ref<VulkanInstance> instance, Ref<VulkanDevice> device, const Window& targetWindow, VSyncMode vsyncMode)
+    VulkanSwapChain::VulkanSwapChain(Ref<VulkanInstance> instance, Ref<VulkanDevice> device, const RenderWindow& targetWindow, VSyncMode vsyncMode)
         : m_Instance(instance)
         , m_Device(device)
         , m_VSyncMode(vsyncMode)
@@ -85,7 +85,7 @@ namespace Dodo {
 
         Stopwatch waitStopwatch{};
         DODO_VERIFY_VK_RESULT(vkWaitForFences(m_Device->GetVulkanDevice(), 1, &frame.WaitFence, VK_TRUE, defaultTimeout));
-        m_PerformanceStats.GPUWaitTime = waitStopwatch.GetMilliseconds();
+        m_PerformanceStats.GPUWaitTime = waitStopwatch.get_milliseconds();
 
         VkResult result = AcquireNextImage(frame, &m_ImageIndex);
         if (result == VK_ERROR_OUT_OF_DATE_KHR)

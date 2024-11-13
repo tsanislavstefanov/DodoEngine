@@ -2,12 +2,12 @@
 
 namespace Dodo {
 
-    class Window;
+    class RenderWindow;
 
     class VulkanInstance : public RefCounted
     {
     public:
-        VulkanInstance(const Window& targetWindow);
+        VulkanInstance(const RenderWindow& targetWindow);
         ~VulkanInstance();
 
         inline uint32_t GetAPIVersion() const { return APIVersion; }

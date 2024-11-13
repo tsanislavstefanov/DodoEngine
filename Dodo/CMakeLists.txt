@@ -1,29 +1,26 @@
 cmake_minimum_required(VERSION 3.27.1)
-project(DodoEngine VERSION 1.0)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
-
-add_executable(DODO ${SOURCES} ${THIRD_PARTY_SOURCES})
-
+# Vulkan:
+set(VULKAN_SDK_PATH $ENV{VULKAN_SDK})
 find_package(Vulkan REQUIRED)
 
-if(THIRD_PARTY_DEPENDENCIES)
-    add_dependencies(DODO ${THIRD_PARTY_DEPENDENCIES})
-endif()
+# Additional Vulkan libs:
+find_library(SHADERC_COMBINEDD_LIB shaderc_combinedd HINTS "${VULKAN_SDK_PATH}/Lib")
 
-target_link_libraries(DODO PRIVATE ${Vulkan_LIBRARIES} ${THIRD_PARTY_LIBS})
+# Dodo source files & app exe:
+file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+add_executable(Dodo ${SOURCES})
 
-target_include_directories(DODO PUBLIC ${Vulkan_INCLUDE_DIRS} ${THIRD_PARTY_INCLUDES})
-target_include_directories(DODO PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# Additional include dirs:
+target_include_directories(Dodo PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${Vulkan_INCLUDE_DIRS})
 
-target_precompile_headers(DODO PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/pch.h)
+# Link libs:
+target_link_libraries(Dodo PRIVATE ${Vulkan_LIBRARIES} spdlog yaml-cpp ${SHADERC_COMBINEDD_LIB})
+
+target_precompile_headers(Dodo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/pch.h)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_compile_definitions(DODO PRIVATE _WIN32)
+    target_compile_definitions(Dodo PRIVATE _WIN32)
 endif()
 
 set(CMAKE_BUILD_TYPE Debug)

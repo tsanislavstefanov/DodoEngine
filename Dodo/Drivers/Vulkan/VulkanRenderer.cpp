@@ -2,7 +2,6 @@
 #include "VulkanUtils.h"
 #include "VulkanRenderer.h"
 #include "VulkanAllocator.h"
-#include "Core/File.h"
 
 namespace Dodo {
 
@@ -22,11 +21,11 @@ namespace Dodo {
 
     }
 
-    VulkanRenderer::VulkanRenderer(RenderThread& renderThread, const Window& targetWindow, VSyncMode vsyncMode)
+    VulkanRenderer::VulkanRenderer(RenderThread& renderThread, const RenderWindow& targetWindow, VSyncMode vsyncMode)
         : Renderer(renderThread)
-        , m_Instance(Ref<VulkanInstance>::Create(targetWindow))
-        , m_Device(Ref<VulkanDevice>::Create(m_Instance))
-        , m_SwapChain(Ref<VulkanSwapChain>::Create(m_Instance, m_Device, targetWindow, vsyncMode))
+        , m_Instance(Ref<VulkanInstance>::create(targetWindow))
+        , m_Device(Ref<VulkanDevice>::create(m_Instance))
+        , m_SwapChain(Ref<VulkanSwapChain>::create(m_Instance, m_Device, targetWindow, vsyncMode))
     {
     }
 
@@ -94,7 +93,7 @@ namespace Dodo {
         Submit([this, bufferHandle, data, size, offset]() mutable
         {
             VulkanAllocator allocator(m_Instance, m_Device);
-            VulkanBuffer* vulkanBuffer = reinterpret_cast<VulkanBuffer*>(bufferHandle.Handle);
+            VulkanBuffer* vulkanBuffer = reinterpret_cast<VulkanBuffer*>(bufferHandle.handle);
             uint8_t* destination = allocator.MapMemory<uint8_t>(vulkanBuffer->MemoryAllocation);
             std::memcpy(destination, static_cast<uint8_t*>(data) + offset, size);
             allocator.UnmapMemory(vulkanBuffer->MemoryAllocation);
@@ -106,7 +105,7 @@ namespace Dodo {
         Submit([this, bufferHandle]() mutable
         {
             VulkanAllocator allocator(m_Instance, m_Device);
-            VulkanBuffer* vulkanBuffer = reinterpret_cast<VulkanBuffer*>(bufferHandle.Handle);
+            VulkanBuffer* vulkanBuffer = reinterpret_cast<VulkanBuffer*>(bufferHandle.handle);
             allocator.Destroy(vulkanBuffer->Buffer, vulkanBuffer->MemoryAllocation);
             delete vulkanBuffer;
         });
@@ -127,12 +126,10 @@ namespace Dodo {
     {
         Submit([this, shaderHandle, forceCompile]() mutable
         {
-            auto vulkanShader = reinterpret_cast<VulkanShader*>(shaderHandle.Handle);
-            std::string shaderSource = File::ReadAndSkipBOM(vulkanShader->AssetPath);
-            if (!shaderSource.empty())
+            auto vulkanShader = reinterpret_cast<VulkanShader*>(shaderHandle.handle);
+            if (!m_ShaderCompiler.Recompile(vulkanShader, forceCompile))
             {
-                vulkanShader->Source = std::move(shaderSource);
-                m_ShaderCompiler.Recompile(vulkanShader, forceCompile);
+                DODO_LOG_ERROR_TAG("Renderer", "Compilation process for shader: {0} terminated!", vulkanShader->AssetPath.string());
             }
         });
     }

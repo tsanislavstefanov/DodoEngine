@@ -54,3 +54,13 @@
 #   define DODO_ASSERT(...)
 #   define DODO_VERIFY(...)
 #endif
+
+static constexpr size_t operator"" _mb(size_t mb) {
+    // 1 MB = 1024 * 1024 bytes.
+    return mb * 1024 * 1024;
+}
+
+static constexpr size_t operator"" _kb(size_t kb) {
+    // 1 KB = 1024 bytes.
+    return kb * 1024;
+}

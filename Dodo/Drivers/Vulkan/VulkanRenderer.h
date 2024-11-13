@@ -7,14 +7,14 @@
 #include "VulkanShader.h"
 #include "VulkanShaderCompiler.h"
 #include "VulkanSwapChain.h"
-#include "Renderer/Renderer.h"
+#include "Renderer/renderer.h"
 
 namespace Dodo {
 
     class VulkanRenderer : public Renderer
     {
     public:
-        VulkanRenderer(RenderThread& renderThread, const Window& targetWindow, VSyncMode vsyncMode);
+        VulkanRenderer(RenderThread& renderThread, const RenderWindow& targetWindow, VSyncMode vsyncMode);
         ~VulkanRenderer();
 
         BufferHandle BufferCreate(BufferUsage bufferUsage, size_t size, void* data = nullptr) override;
@@ -28,7 +28,7 @@ namespace Dodo {
         void BeginFrame() override;
         void EndFrame() override;
         void OnResize(uint32_t width, uint32_t height) override;
-        RendererType GetType() const { return RendererType::Vulkan; }
+        RendererType GetType() const { return RendererType::vulkan; }
 
     private:
         Ref<VulkanInstance> m_Instance = nullptr;

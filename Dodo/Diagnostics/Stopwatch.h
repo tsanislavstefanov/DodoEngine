@@ -8,7 +8,7 @@ namespace Dodo {
         Stopwatch();
 
         void Now();
-        double GetMilliseconds() const;
+        double get_milliseconds() const;
         double GetSeconds() const;
 
     private:

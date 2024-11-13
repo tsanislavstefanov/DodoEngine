@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vma/vk_mem_alloc.h>
+
 #include "VulkanInstance.h"
 #include "VulkanDevice.h"
 

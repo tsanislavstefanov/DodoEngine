@@ -1,5 +1,4 @@
 #pragma once
-#define VMA_IMPLEMENTATION
 
 #include <vulkan/vulkan.h>
 #include <vma/vk_mem_alloc.h>
@@ -29,7 +28,11 @@ namespace Dodo { namespace Utils {
 
     static std::string ConvertVulkanVersionToString(uint32_t version)
     {
-        return std::format("{0}.{1}.{2}", VK_API_VERSION_MAJOR(version), VK_API_VERSION_MINOR(version), VK_API_VERSION_PATCH(version));
+        return std::format(
+            "{0}.{1}.{2}",
+            VK_API_VERSION_MAJOR(version),
+            VK_API_VERSION_MINOR(version),
+            VK_API_VERSION_PATCH(version));
     }
 
 }}

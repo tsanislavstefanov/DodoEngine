@@ -1,7 +1,8 @@
 #pragma once
 
 #include "window.h"
-#include "renderer/Renderer.h"
+#include "renderer/renderer.h"
+#include "renderer/render_thread.h"
 
 namespace Dodo {
 
@@ -17,12 +18,6 @@ namespace Dodo {
         }
     };
 
-    struct MainThreadPerformanceStats
-    {
-        double wait_time = 0.0;
-        double work_time = 0.0;
-    };
-
     class Engine
     {
     public:
@@ -33,13 +28,12 @@ namespace Dodo {
 
     private:
         void OnEvent(Event& e);
-        void OnWindowResize(WindowResizeEvent& e);
+        bool OnWindowResize(WindowResizeEvent& e);
 
-        Ref<Window> m_Window = nullptr;
+        Ref<RenderWindow> m_Window = nullptr;
         bool m_IsRunning = true;
-        RenderThread m_RenderThread{};
+        RenderThread render_thread{};
         Ref<Renderer> m_Renderer = nullptr;
-        MainThreadPerformanceStats main_thread_performance_stats_{};
     };
 
 }

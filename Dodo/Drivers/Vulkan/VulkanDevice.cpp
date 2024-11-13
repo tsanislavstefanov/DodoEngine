@@ -5,7 +5,7 @@
 namespace Dodo {
 
     VulkanDevice::VulkanDevice(Ref<VulkanInstance> instance)
-        : m_Adapter{Ref<VulkanAdapter>::Create(instance)}
+        : m_Adapter{Ref<VulkanAdapter>::create(instance)}
     {
         static constexpr auto defaultQueuePriority = 1.0f;
         VkDeviceQueueCreateInfo& queueCreateInfo = m_QueueCreateInfos.emplace_back();

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Event.h"
-#include "Bindings/Func.h"
+#include "event.h"
+#include "Bindings/func.h"
 #include "Drivers/Vulkan/VulkanUtils.h"
 
 namespace Dodo {
@@ -31,16 +31,16 @@ namespace Dodo {
         bool Maximized = false;
     };
 
-    class Window : public RefCounted
+    class RenderWindow : public RefCounted
     {
     public:
-        static Ref<Window> Create(WindowSpecifications&& specs);
+        static Ref<RenderWindow> Create(WindowSpecifications&& specs);
 
-        Window(WindowSpecifications&& specs)
+        RenderWindow(WindowSpecifications&& specs)
             : m_Specifications(std::move(specs))
         {}
 
-        virtual ~Window() = default;
+        virtual ~RenderWindow() = default;
 
         virtual void ProcessEvents() = 0;
         virtual void* GetNativeHandle() const = 0;

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "engine.h"
+#include "Renderer/render_thread.h"
 
 namespace Dodo {
 
@@ -10,16 +11,18 @@ namespace Dodo {
         windowSpecs.Height = 720;
         windowSpecs.Title = "Dodo Engine";
         windowSpecs.Maximized = false;
-        m_Window = Window::Create(std::move(windowSpecs));
+        m_Window = RenderWindow::Create(std::move(windowSpecs));
         m_Window->SetEventCallback([this](Event& e) { OnEvent(e); });
 
-        m_Renderer = Renderer::Create(m_RenderThread, RendererType::Vulkan, *m_Window);
-        m_RenderThread.Start(RenderThreadPolicy::MultiThreaded);
+        render_thread.start();
+        m_Renderer = Renderer::create(*render_thread, RendererType::vulkan, *m_Window);
+        // To compile all default shaders.
+        render_thread.pump();
     }
 
     Engine::~Engine()
     {
-        m_RenderThread.Stop();
+        render_thread.stop();
         m_Renderer = nullptr;
     }
 
@@ -27,16 +30,11 @@ namespace Dodo {
     {
         while (m_IsRunning)
         {
-            Stopwatch waitStopwatch{};
-            m_RenderThread.WaitUntilRenderComplete();
-            main_thread_performance_stats_.wait_time = waitStopwatch.GetMilliseconds();
-
-            // Process events even when the window is not focused.
-            // This way, we can get notified when the window has regained focus.
             m_Window->ProcessEvents();
 
-            m_RenderThread.Flush();
-
+            render_thread.wait_on_render_complete();
+            // Render thread is few frames behind.
+            render_thread.render();
             m_Renderer->BeginFrame();
             // FRAME.
             m_Renderer->EndFrame();
@@ -46,16 +44,17 @@ namespace Dodo {
     void Engine::OnEvent(Event& e)
     {
         EventDispatcher dispatcher(e);
-        dispatcher.Dispatch<WindowResizeEvent>([this](WindowResizeEvent& e) { OnWindowResize(e); });
-        dispatcher.Dispatch<WindowCloseEvent>([this](WindowCloseEvent&) { m_IsRunning = false; });
+        dispatcher.dispatch<WindowResizeEvent>([this](WindowResizeEvent& e) { return OnWindowResize(e); });
+        dispatcher.dispatch<WindowCloseEvent>([this](WindowCloseEvent&) { m_IsRunning = false; return false; });
     }
 
-    void Engine::OnWindowResize(WindowResizeEvent& e)
+    bool Engine::OnWindowResize(WindowResizeEvent& e)
     {
         if ((e.Width == 0) || (e.Height == 0))
-            return;
+            return false;
 
         m_Renderer->OnResize(e.Width, e.Height);
+        return false;
     }
 
 }

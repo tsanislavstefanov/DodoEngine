@@ -1,29 +1,35 @@
 #pragma once
 
 #include "Buffer.h"
-#include "RenderThread.h"
 #include "Shader.h"
-#include "VSyncMode.h"
-#include "Core/window.h"
+#include "vsync_mode.h"
 
 namespace Dodo {
 
-    enum class RendererType
-    {
-        Vulkan,
-        AutoCount,
-        None
-    };
+    class RenderThread;
+    class RenderWindow;
 
     class Renderer : public RefCounted
     {
     public:
-        static Ref<Renderer> Create(RenderThread& renderThread, RendererType type, const Window& targetWindow, VSyncMode vsyncMode = VSyncMode::Enabled);
+        enum class Type
+        {
+            vulkan,
+            auto_count,
+            none
+        };
 
-        Renderer(RenderThread& renderThread);
+        struct Specification
+        {
+            RenderThread& render_thread;
+            Type type = Type::none;
+            Ref<RenderWindow> target_window = nullptr;
+            VSyncMode vsync_mode = VSyncMode::none;
+        };
+
+        static Ref<Renderer> create(const Specification& specification);
+
         virtual ~Renderer() = default;
-
-        void Submit(RenderCommand&& command);
 
         virtual BufferHandle BufferCreate(BufferUsage bufferUsage, size_t size, void* data = nullptr) = 0;
         virtual void BufferUploadData(BufferHandle bufferHandle, void* data, size_t size, size_t offset = 0) = 0;
@@ -36,10 +42,7 @@ namespace Dodo {
         virtual void BeginFrame() = 0;
         virtual void EndFrame() = 0;
         virtual void OnResize(uint32_t width, uint32_t height) = 0;
-        virtual RendererType GetType() const = 0;
-
-    private:
-        RenderThread& m_RenderThread;
+        virtual Type GetType() const = 0;
     };
 
 }

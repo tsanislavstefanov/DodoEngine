@@ -6,10 +6,10 @@
 
 namespace Dodo {
 
-    Ref<Window> Window::Create(WindowSpecifications&& specs)
+    Ref<RenderWindow> RenderWindow::Create(WindowSpecifications&& specs)
     {
 #ifdef DODO_WINDOWS
-        return Ref<WindowsWindow>::Create(std::forward<WindowSpecifications>(specs));
+        return Ref<WindowsWindow>::create(std::forward<WindowSpecifications>(specs));
 #endif
     }
 

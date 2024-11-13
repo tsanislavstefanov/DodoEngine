@@ -13,7 +13,7 @@ namespace Dodo {
         m_StartTime = std::chrono::steady_clock::now();
     }
 
-    double Stopwatch::GetMilliseconds() const
+    double Stopwatch::get_milliseconds() const
     {
         const auto stopTime = std::chrono::steady_clock::now();
         using Nanoseconds = std::chrono::nanoseconds;
@@ -23,7 +23,7 @@ namespace Dodo {
 
     double Stopwatch::GetSeconds() const
     {
-        return GetMilliseconds() * 0.001;
+        return get_milliseconds() * 0.001;
     }
 
 }

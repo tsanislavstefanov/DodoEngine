@@ -25,7 +25,7 @@ namespace Dodo {
     {
     public:
         template<typename... Args>
-        static Ref<Type> Create(Args&&... args)
+        static Ref<Type> create(Args&&... args)
         {
             return Ref<Type>(new Type(std::forward<Args>(args)...));
         }

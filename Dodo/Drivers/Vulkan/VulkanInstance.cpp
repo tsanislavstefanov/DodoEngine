@@ -33,7 +33,7 @@ namespace Dodo {
 
     }
 
-    VulkanInstance::VulkanInstance(const Window& targetWindow)
+    VulkanInstance::VulkanInstance(const RenderWindow& targetWindow)
     {
         DODO_VERIFY(IsDriverVersionSupported(APIVersion));
 

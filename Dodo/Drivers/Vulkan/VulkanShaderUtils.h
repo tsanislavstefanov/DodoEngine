@@ -19,7 +19,7 @@ namespace Dodo {
                 default: break;
             }
 
-            DODO_ASSERT(false, "ShaderStage not supported!");
+            DODO_VERIFY(false);
             return "None";
         }
 

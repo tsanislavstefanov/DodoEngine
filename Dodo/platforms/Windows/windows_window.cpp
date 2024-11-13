@@ -7,7 +7,7 @@
 namespace Dodo {
 
     WindowsWindow::WindowsWindow(WindowSpecifications&& specs)
-        : Window(std::forward<WindowSpecifications>(specs))
+        : RenderWindow(std::forward<WindowSpecifications>(specs))
     {
         module_ = GetModuleHandleW(NULL);
         const auto class_name = L"WindowClass";
@@ -82,7 +82,7 @@ namespace Dodo {
                 specs.Width  = width;
                 specs.Height = height;
                 WindowResizeEvent e{ specs.Width, specs.Height };
-                window.OnResize(e);
+                window.m_EventCallback(e);
                 break;
             }
 
@@ -100,7 +100,8 @@ namespace Dodo {
 
             case WM_CLOSE:
             {
-                window.OnClose();
+                WindowCloseEvent e{};
+                window.m_EventCallback(e);
                 break;
             }
 
