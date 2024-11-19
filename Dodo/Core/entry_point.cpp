@@ -12,6 +12,6 @@ int main(int argc, char** argv)
     Dodo::Log::init();
 
     Dodo::Engine engine({ argc, argv });
-    engine.run();
+    engine.iterate_main_loop();
     return 0;
 }

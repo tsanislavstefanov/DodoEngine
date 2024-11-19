@@ -1,39 +1,33 @@
 #pragma once
 
-#include "window.h"
-#include "renderer/renderer.h"
-#include "renderer/render_thread.h"
+#include "display.h"
 
 namespace Dodo {
 
-    struct CommandLineArgs
-    {
+    struct CommandLineArgs {
         const int count = 0;
         const char* const* values = nullptr;
 
-        const char* operator[](size_t index) const
-        {
+        const char* operator[](size_t index) const {
             DODO_ASSERT((index >= 0) && (index < count), "Index out of range!");
             return values[index];
         }
     };
 
-    class Engine
-    {
+    class Engine {
     public:
         Engine(const CommandLineArgs& cmd_line_args);
         ~Engine();
 
-        void run();
+        void iterate_main_loop();
 
     private:
-        void OnEvent(Event& e);
-        bool OnWindowResize(WindowResizeEvent& e);
+        void on_event(Display::WindowId window, Display::Event& e);
 
-        Ref<RenderWindow> m_Window = nullptr;
-        bool m_IsRunning = true;
-        RenderThread render_thread{};
-        Ref<Renderer> m_Renderer = nullptr;
+        bool _is_running = true;
+        Ref<Display> _display = nullptr;
+        Display::WindowId _main_window = 0;
+        Ref<RenderContext> _render_context = nullptr;
     };
 
 }

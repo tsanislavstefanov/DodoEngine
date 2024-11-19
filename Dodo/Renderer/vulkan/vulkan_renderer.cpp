@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "VulkanUtils.h"
-#include "VulkanRenderer.h"
+#include "vulkan_renderer.h"
 #include "VulkanAllocator.h"
 
 namespace Dodo {
@@ -21,7 +21,7 @@ namespace Dodo {
 
     }
 
-    VulkanRenderer::VulkanRenderer(RenderThread& renderThread, const RenderWindow& targetWindow, VSyncMode vsyncMode)
+    RendererVulkan::RendererVulkan(RenderThread& renderThread, const RenderWindow& targetWindow, VSyncMode vsyncMode)
         : Renderer(renderThread)
         , m_Instance(Ref<VulkanInstance>::create(targetWindow))
         , m_Device(Ref<VulkanDevice>::create(m_Instance))
@@ -29,14 +29,14 @@ namespace Dodo {
     {
     }
 
-    VulkanRenderer::~VulkanRenderer()
+    RendererVulkan::~RendererVulkan()
     {
         m_SwapChain = nullptr;
         m_Device = nullptr;
         m_Instance = nullptr;
     }
 
-    BufferHandle VulkanRenderer::BufferCreate(BufferUsage bufferUsage, size_t size, void* data)
+    BufferHandle RendererVulkan::BufferCreate(BufferUsage bufferUsage, size_t size, void* data)
     {
         VulkanBuffer* vulkanBuffer = new VulkanBuffer();
         vulkanBuffer->Size = size;
@@ -88,7 +88,7 @@ namespace Dodo {
         return BufferHandle(vulkanBuffer);
     }
 
-    void VulkanRenderer::BufferUploadData(BufferHandle bufferHandle, void* data, size_t size, size_t offset)
+    void RendererVulkan::BufferUploadData(BufferHandle bufferHandle, void* data, size_t size, size_t offset)
     {
         Submit([this, bufferHandle, data, size, offset]() mutable
         {
@@ -100,7 +100,7 @@ namespace Dodo {
         });
     }
 
-    void VulkanRenderer::BufferDestroy(BufferHandle bufferHandle)
+    void RendererVulkan::BufferDestroy(BufferHandle bufferHandle)
     {
         Submit([this, bufferHandle]() mutable
         {
@@ -111,7 +111,7 @@ namespace Dodo {
         });
     }
 
-    ShaderHandle VulkanRenderer::ShaderCreate(const std::filesystem::path& assetPath)
+    ShaderHandle RendererVulkan::ShaderCreate(const std::filesystem::path& assetPath)
     {
         VulkanShader* vulkanShader = new VulkanShader{};
         vulkanShader->AssetPath = assetPath;
@@ -122,7 +122,7 @@ namespace Dodo {
         return shaderHandle;
     }
 
-    void VulkanRenderer::ShaderReload(ShaderHandle shaderHandle, bool forceCompile)
+    void RendererVulkan::ShaderReload(ShaderHandle shaderHandle, bool forceCompile)
     {
         Submit([this, shaderHandle, forceCompile]() mutable
         {
@@ -134,12 +134,12 @@ namespace Dodo {
         });
     }
 
-    void VulkanRenderer::ShaderDestroy(ShaderHandle shaderHandle)
+    void RendererVulkan::ShaderDestroy(ShaderHandle shaderHandle)
     {
 
     }
 
-    void VulkanRenderer::BeginFrame()
+    void RendererVulkan::BeginFrame()
     {
         Submit([this]() mutable
         {
@@ -147,7 +147,7 @@ namespace Dodo {
         });
     }
 
-    void VulkanRenderer::EndFrame()
+    void RendererVulkan::EndFrame()
     {
         Submit([this]() mutable
         {
@@ -155,7 +155,7 @@ namespace Dodo {
         });
     }
 
-    void VulkanRenderer::OnResize(uint32_t width, uint32_t height)
+    void RendererVulkan::OnResize(uint32_t width, uint32_t height)
     {
         m_SwapChain->OnResize(width, height);
     }

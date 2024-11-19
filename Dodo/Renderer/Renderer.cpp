@@ -1,14 +1,14 @@
 #include "pch.h"
 #include "renderer.h"
-#include "Drivers/Vulkan/VulkanRenderer.h"
+#include "Drivers/Vulkan/vulkan_renderer.h"
 
 namespace Dodo {
 
-    Ref<Renderer> Renderer::create(const Specification& specification)
+    Ref<Renderer> Renderer::create(Type type)
     {
-        switch (specification.type)
+        switch (type)
         {
-            case Type::vulkan: return Ref<VulkanRenderer>::create(specification);
+            case Type::vulkan: return Ref<RendererVulkan>::create();
             default: break;
         }
 

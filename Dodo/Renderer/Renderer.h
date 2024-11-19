@@ -1,48 +1,39 @@
 #pragma once
 
-#include "Buffer.h"
-#include "Shader.h"
-#include "vsync_mode.h"
+#include "render_handle.h"
 
 namespace Dodo {
 
-    class RenderThread;
-    class RenderWindow;
+    DODO_DEFINE_RENDER_HANDLE(Surface);
+    DODO_DEFINE_RENDER_HANDLE(Buffer);
+    DODO_DEFINE_RENDER_HANDLE(Swapchain);
 
-    class Renderer : public RefCounted
-    {
+    class Renderer : public RefCounted {
     public:
-        enum class Type
-        {
+        enum class Type {
             vulkan,
             auto_count,
             none
         };
 
-        struct Specification
-        {
-            RenderThread& render_thread;
-            Type type = Type::none;
-            Ref<RenderWindow> target_window = nullptr;
-            VSyncMode vsync_mode = VSyncMode::none;
-        };
-
-        static Ref<Renderer> create(const Specification& specification);
-
         virtual ~Renderer() = default;
 
-        virtual BufferHandle BufferCreate(BufferUsage bufferUsage, size_t size, void* data = nullptr) = 0;
-        virtual void BufferUploadData(BufferHandle bufferHandle, void* data, size_t size, size_t offset = 0) = 0;
-        virtual void BufferDestroy(BufferHandle bufferHandle) = 0;
+        virtual SwapchainHandle swapchain_create(VSyncMode vsync_mode) = 0;
+        virtual void swapchain_set_vsync_mode(SwapchainHandle swapchain, VSyncMode vsync_mode) = 0;
+        virtual void swapchain_begin_frame(SwapchainHandle swapchain) = 0;
+        virtual void swapchain_present(SwapchainHandle swapchain) = 0;
+        virtual void swapchain_on_resize(SwapchainHandle swapchain, uint32_t width, uint32_t height) = 0;
+        virtual void swapchain_destroy(SwapchainHandle swapchain) = 0;
 
-        virtual ShaderHandle ShaderCreate(const std::filesystem::path& assetPath) = 0;
-        virtual void ShaderReload(ShaderHandle shaderHandle, bool forceCompile = false) = 0;
-        virtual void ShaderDestroy(ShaderHandle shaderHandle) = 0;
+        enum class BufferUsage {
+            vertex_buffer,
+            auto_count,
+            none
+        };
 
-        virtual void BeginFrame() = 0;
-        virtual void EndFrame() = 0;
-        virtual void OnResize(uint32_t width, uint32_t height) = 0;
-        virtual Type GetType() const = 0;
+        virtual BufferHandle buffer_create(BufferUsage buffer_usage, size_t size, void* data = nullptr) = 0;
+        virtual void buffer_upload_data(BufferHandle buffer, void* data, size_t size, size_t offset = 0) = 0;
+        virtual void buffer_destroy(BufferHandle buffer) = 0;
     };
 
 }

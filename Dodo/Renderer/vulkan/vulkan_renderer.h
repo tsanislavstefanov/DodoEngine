@@ -11,11 +11,11 @@
 
 namespace Dodo {
 
-    class VulkanRenderer : public Renderer
+    class RendererVulkan : public Renderer
     {
     public:
-        VulkanRenderer(RenderThread& renderThread, const RenderWindow& targetWindow, VSyncMode vsyncMode);
-        ~VulkanRenderer();
+        RendererVulkan(RenderThread& renderThread, const RenderWindow& targetWindow, VSyncMode vsyncMode);
+        ~RendererVulkan();
 
         BufferHandle BufferCreate(BufferUsage bufferUsage, size_t size, void* data = nullptr) override;
         void BufferUploadData(BufferHandle bufferHandle, void* data, size_t size, size_t offset = 0) override;
