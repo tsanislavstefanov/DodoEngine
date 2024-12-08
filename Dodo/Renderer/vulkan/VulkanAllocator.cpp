@@ -1,6 +1,6 @@
 #include "pch.h"
 #define VMA_IMPLEMENTATION
-#include "VulkanUtils.h"
+#include "vulkan_utils.h"
 #include "VulkanAllocator.h"
 
 namespace Dodo {

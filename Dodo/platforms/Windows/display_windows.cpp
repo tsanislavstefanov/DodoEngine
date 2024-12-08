@@ -1,11 +1,21 @@
 #include "pch.h"
 #include "display_windows.h"
-#include "windows_vulkan_context.h"
+#include "render_context_vulkan_windows.h"
 
 namespace Dodo {
 
+    DisplayWindows::DisplayWindows(RenderContext::Type context_type) {
+        switch (context_type) {
+            case RenderContext::Type::vulkan:
+                _render_context = Ref<RenderContextVulkanWindows>::create();
+                break;
+
+            default: DODO_VERIFY(false); break;
+        }
+    }
+
     Display::WindowId DisplayWindows::window_create(const WindowSpecifications& window_specs) {
-        const HMODULE hinstance  = GetModuleHandleW(NULL);
+        const HMODULE hinstance = GetModuleHandleW(NULL);
 
         WNDCLASSEXW wndclass{};
         ZeroMemory(&wndclass, sizeof(WNDCLASSEXW));
@@ -38,14 +48,17 @@ namespace Dodo {
                 NULL,
                 hinstance,
                 NULL),
-            "WindowsDisplay failed to create HWND!"
+            "DisplayWindows failed to create HWND!"
         );
 
-        const WindowId window = _current_window_id++;
-        WindowData& data = _windows[window];
-        data.hinstance = hinstance;
-        data.hwnd = hwnd;
-        data.window = window;
+        if (!hwnd) {
+            return invalid_window_id;
+        }
+
+        const WindowId window_id = _window_id_counter++;
+        WindowData& data = _window_ids[window_id];
+        data.window_id = window_id;
+        data.platform_data = PlatformData{ hinstance, hwnd };
         data.width = window_specs.width;
         data.height = window_specs.height;
         data.title = window_specs.title;
@@ -54,28 +67,20 @@ namespace Dodo {
         ShowWindow(hwnd, SW_SHOWDEFAULT);
         SetFocus(hwnd);
 
-        return window;
+        return window_id;
     }
 
-    void DisplayWindows::window_set_event_callback(WindowId window, EventCallback&& callback) {
-        if (_windows.contains(window)) {
-            _windows.at(window).event_callback = std::move(callback);
+    void DisplayWindows::window_set_event_callback(WindowId window_id, EventCallback&& callback) {
+        if (_window_ids.contains(window_id)) {
+            _window_ids.at(window_id).event_callback = std::move(callback);
         }
     }
 
-    bool DisplayWindows::window_should_close(WindowId window) const {
-        if (_windows.contains(window)) {
-            return _windows.at(window).should_close;
-        }
-
-        return false;
-    }
-
-    void DisplayWindows::window_process_events(WindowId window) {
-        if (_windows.contains(window)) {
+    void DisplayWindows::window_process_events(WindowId window_id) {
+        if (_window_ids.contains(window_id)) {
             MSG msg{};
             ZeroMemory(&msg, sizeof(MSG));
-            while (PeekMessageW(&msg, _windows.at(window).hwnd, 0, 0, PM_REMOVE)) {
+            while (PeekMessageW(&msg, _window_ids.at(window_id).platform_data.hwnd, 0, 0, PM_REMOVE)) {
                 // Translate virtual key message into character message.
                 TranslateMessage(&msg);
                 // Dispatch message to window procedure.
@@ -84,13 +89,11 @@ namespace Dodo {
         }
     }
 
-    Ref<RenderContext> DisplayWindows::render_context_create(Renderer::Type type) {
-        switch (type) {
-            case Renderer::Type::vulkan: return Ref<RenderContextVulkanWindows>::create();
-            default: break;
+    const void* DisplayWindows::window_get_platform_data(WindowId window_id) const {
+        if (_window_ids.contains(window_id)) {
+            return &_window_ids.at(window_id).platform_data;
         }
 
-        DODO_VERIFY(false);
         return nullptr;
     }
 
@@ -102,7 +105,7 @@ namespace Dodo {
 
         auto& window_data = *reinterpret_cast<WindowData*>(user_data);
         switch (msg) {
-            case WM_SIZE: {
+            case WM_SIZE:
                 const auto width  = static_cast<uint32_t>(LOWORD(lparam));
                 const auto height = static_cast<uint32_t>(HIWORD(lparam));
                 if (window_data.width == width && window_data.height == height) {
@@ -114,28 +117,19 @@ namespace Dodo {
 
                 Event e{};
                 e.type = Event::Type::window_resize;
-                e.resize = { width, height };
-                window_data.event_callback(window_data.window, e);
+                e.resized.width  = width;
+                e.resized.height = height;
+                window_data.event_callback(window_data.window_id, e);
                 break;
-            }
 
-            case WM_CLOSE: {
-                window_data.should_close = true;
-
+            case WM_CLOSE:
                 Event e{};
                 e.type = Event::Type::window_close;
-                window_data.event_callback(window_data.window, e);
-                break;
-            }
-
-            case WM_QUIT: {
+                window_data.event_callback(window_data.window_id, e);
                 PostQuitMessage(0);
                 break;
-            }
 
-            default: {
-                break;
-            }
+            default: break;
         }
 
         return DefWindowProcW(hwnd, msg, wparam, lparam);

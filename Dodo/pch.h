@@ -36,15 +36,3 @@
 #include "core/core.h"
 #include "diagnostics/Stopwatch.h"
 #include "memory/ref.h"
-
-////////////////////////////////////////////////////////////////
-// WINDOWS INCLUDE(S) //////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-
-#ifdef DODO_WINDOWS
-#   ifndef NOMINMAX
-#       define NOMINMAX
-#   endif
-#   include <Windows.h>
-#   include <processthreadsapi.h>
-#endif

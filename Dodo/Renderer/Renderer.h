@@ -1,25 +1,18 @@
 #pragma once
 
+#include "render_context.h"
 #include "render_handle.h"
 
 namespace Dodo {
 
-    DODO_DEFINE_RENDER_HANDLE(Surface);
     DODO_DEFINE_RENDER_HANDLE(Buffer);
     DODO_DEFINE_RENDER_HANDLE(Swapchain);
 
     class Renderer : public RefCounted {
     public:
-        enum class Type {
-            vulkan,
-            auto_count,
-            none
-        };
-
         virtual ~Renderer() = default;
 
-        virtual SwapchainHandle swapchain_create(VSyncMode vsync_mode) = 0;
-        virtual void swapchain_set_vsync_mode(SwapchainHandle swapchain, VSyncMode vsync_mode) = 0;
+        virtual SwapchainHandle swapchain_create(SurfaceHandle surface) = 0;
         virtual void swapchain_begin_frame(SwapchainHandle swapchain) = 0;
         virtual void swapchain_present(SwapchainHandle swapchain) = 0;
         virtual void swapchain_on_resize(SwapchainHandle swapchain, uint32_t width, uint32_t height) = 0;

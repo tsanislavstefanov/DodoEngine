@@ -1,6 +1,6 @@
 #pragma once
 
-#include "VulkanUtils.h"
+#include "vulkan_utils.h"
 #include "Core/Core.h"
 
 #include <string>

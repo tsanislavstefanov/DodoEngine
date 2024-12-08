@@ -15,13 +15,12 @@ namespace Dodo {
         Func() = default;
 
         template<typename Lambda>
-        Func(Lambda&& callback) {
-            connect(std::forward<Lambda>(callback));
+        Func(Lambda&& lambda) {
+            connect(std::forward<Lambda>(lambda));
         }
 
         bool operator==(const Func other) const {
-            return (invokation.storage == other.invokation.storage) &&
-                (invokation.stub == other.invokation.stub);
+            return _storage == other._storage;
         }
 
         bool operator!=(const Func other) const {
@@ -29,46 +28,40 @@ namespace Dodo {
         }
 
         operator bool() const {
-            return invokation.stub != nullptr;
+            return _fn != nullptr;
         }
 
-        Result operator()(Args&&... args) const {
-            return invoke(std::forward<Args>(args)...);
+        Result operator()(Args... args) const {
+            return invoke(args...);
         }
 
         template<typename Lambda>
-        void connect(Lambda&& callback) {
-            DODO_VERIFY(sizeof(Lambda) <= AlignedStorage::max_stack_size);
-            new (&invokation.storage) Lambda(std::forward<Lambda>(callback));
-            invokation.stub = [](const AlignedStorage& storage, Args&&... args) -> Result {
-                auto callback = reinterpret_cast<const Lambda*>(&storage);
+        void connect(Lambda&& lambda) {
+            new (&_storage.data) Lambda(std::forward<Lambda>(lambda));
+            _fn = [](const AlignedStorage& storage, Args&&... args) -> Result {
+                auto callback = reinterpret_cast<const Lambda*>(&storage.data);
                 return (*callback)(std::forward<Args>(args)...);
             };
         }
 
-        Result invoke(Args&&... args) const {
-            return invokation.stub(invokation.storage, std::forward<Args>(args)...);
+        Result invoke(Args... args) const {
+            return _fn(_storage, args...);
         }
 
-        void disconnect()
-        {
-            invokation = {};
+        void disconnect() {
+            _storage = {};
+            _fn = nullptr;
         }
 
     private:
-        struct AlignedStorage
-        {
+        struct AlignedStorage {
             static constexpr size_t max_stack_size = sizeof(void*);
             alignas(alignof(void*)) uint8_t data[max_stack_size]{};
         };
 
-        struct Invokation
-        {
-            AlignedStorage storage{};
-            Result(*stub)(const AlignedStorage&, Args&&...) = nullptr;
-        };
-
-        Invokation invokation{};
+        AlignedStorage _storage{};
+        using Stub = Result(*)(const AlignedStorage&, Args&&...);
+        Stub _fn = nullptr;
     };
 
 }

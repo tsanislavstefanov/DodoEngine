@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "display.h"
-#include "platforms/windows/display_windows.h"
+#ifdef DODO_WINDOWS
+#   include "platforms/windows/display_windows.h"
+#endif
 
 namespace Dodo {
 
@@ -8,6 +10,11 @@ namespace Dodo {
 #ifdef DODO_WINDOWS
         return Ref<DisplayWindows>::create(context_type);
 #endif
+    }
+
+    Ref<RenderContext> Display::get_render_context() const {
+        DODO_ASSERT(_render_context, "RenderContext is not initialized!");
+        return _render_context;
     }
 
 }

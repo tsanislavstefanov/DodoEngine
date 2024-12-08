@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "VulkanUtils.h"
+#include "vulkan_utils.h"
 #include "VulkanDevice.h"
 
 namespace Dodo {

@@ -23,10 +23,12 @@ namespace Dodo {
 
     private:
         void on_event(Display::WindowId window, Display::Event& e);
+        void main_window_on_event(Display::Event& e);
 
         bool _is_running = true;
         Ref<Display> _display = nullptr;
         Display::WindowId _main_window = 0;
+        bool _is_running = true;
         Ref<RenderContext> _render_context = nullptr;
     };
 

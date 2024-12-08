@@ -1,6 +1,6 @@
 #pragma once
 
-#include "renderer/vulkan/vulkan_context.h"
+#include "renderer/vulkan/render_context_vulkan.h"
 
 namespace Dodo {
 
@@ -8,7 +8,7 @@ namespace Dodo {
     public:
         RenderContextVulkanWindows() = default;
 
-        SurfaceHandle surface_create(Display::WindowId window) const override;
+        SurfaceHandle surface_create(Display::WindowId window_id, const SurfaceSpecifications& surface_specs, const void* platform_data) override;
 
     protected:
         const char* _get_platform_surface_extension() const override;

@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "VulkanUtils.h"
+#include "vulkan_utils.h"
 
 namespace Dodo {
 
