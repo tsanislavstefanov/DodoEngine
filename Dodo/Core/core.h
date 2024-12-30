@@ -8,6 +8,12 @@
 #   error "Platform not supported!"
 #endif
 
+#ifdef DODO_WINDOWS
+#   ifndef DODO_VULKAN
+#       define DODO_VULKAN
+#   endif
+#endif
+
 #ifdef _DEBUG
 #   ifndef DODO_DEBUG
 #       define DODO_DEBUG
@@ -19,26 +25,13 @@
 #endif
 
 #ifdef DODO_DEBUG
+#   ifndef DODO_ENABLE_ASSERT
+#       define DODO_ENABLE_ASSERT
+#   endif
 #   ifdef DODO_WINDOWS
-#       define DODO_DEBUG_BREAK() __debugbreak()
-#   endif
-#endif
-
-#if defined(DODO_WINDOWS) || defined(DODO_LINUX) || defined(DODO_MAC_OS)
-#   ifndef DODO_USE_VULKAN
-#       define DODO_USE_VULKAN
-#   endif
-#endif
-
-#ifdef DODO_WINDOWS
-#   ifndef DODO_USE_DIRECT_X
-#        define DODO_USE_DIRECT_X
-#   endif
-#endif
-
-#ifdef DODO_WINDOWS
-#   ifndef DODO_USE_METAL
-#        define DODO_USE_METAL
+#       ifndef DODO_DEBUG_BREAK
+#           define DODO_DEBUG_BREAK() __debugbreak()
+#       endif
 #   endif
 #endif
 
@@ -46,21 +39,22 @@
 // ASSERTION ///////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
-#ifdef DODO_DEBUG
-#   include "Diagnostics/Log.h"
-#   define DODO_ASSERT(CONDITION, ...) if (!(CONDITION)) { DODO_LOG_ERROR(__VA_ARGS__); DODO_DEBUG_BREAK(); }
-#   define DODO_VERIFY(CONDITION) if (!(CONDITION)) { DODO_DEBUG_BREAK(); }
+#ifdef DODO_ENABLE_ASSERT
+#   ifndef DODO_ASSERT
+#       define DODO_ASSERT(CONDITION) if (!(CONDITION)) { DODO_DEBUG_BREAK(); }
+#   endif
 #else
-#   define DODO_ASSERT(...)
-#   define DODO_VERIFY(...)
+#   ifndef DODO_ASSERT
+#       define DODO_ASSERT(...)
+#   endif
 #endif
 
-static constexpr size_t operator"" _mb(size_t mb) {
+constexpr size_t operator"" _mb(size_t mb) {
     // 1 MB = 1024 * 1024 bytes.
     return mb * 1024 * 1024;
 }
 
-static constexpr size_t operator"" _kb(size_t kb) {
+constexpr size_t operator"" _kb(size_t kb) {
     // 1 KB = 1024 bytes.
     return kb * 1024;
 }

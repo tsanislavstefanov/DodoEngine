@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Windows.h>
+
 #include "Input/Input.h"
 
 namespace Dodo {

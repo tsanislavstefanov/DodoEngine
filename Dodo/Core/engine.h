@@ -1,6 +1,8 @@
 #pragma once
 
 #include "display.h"
+#include "renderer/renderer.h"
+#include "renderer/render_context.h"
 
 namespace Dodo {
 
@@ -9,7 +11,7 @@ namespace Dodo {
         const char* const* values = nullptr;
 
         const char* operator[](size_t index) const {
-            DODO_ASSERT((index >= 0) && (index < count), "Index out of range!");
+            DODO_ASSERT((index >= 0) && (index < count));
             return values[index];
         }
     };
@@ -22,14 +24,15 @@ namespace Dodo {
         void iterate_main_loop();
 
     private:
-        void on_event(Display::WindowId window, Display::Event& e);
-        void main_window_on_event(Display::Event& e);
+        void _on_event(Display::Event& e);
+        void _main_window_on_event(Display::Event& e);
 
         bool _is_running = true;
         Ref<Display> _display = nullptr;
-        Display::WindowId _main_window = 0;
-        bool _is_running = true;
-        Ref<RenderContext> _render_context = nullptr;
+        Display::WindowId _main_window_id = 0;
+        Ref<RenderContext> _context = nullptr;
+        Ref<Renderer> _renderer = nullptr;
+        SurfaceHandle _main_surface_handle = nullptr;
     };
 
 }

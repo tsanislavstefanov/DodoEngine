@@ -1,5 +1,8 @@
 #pragma once
 
+#ifdef DODO_VULKAN
+
+#include "vulkan_utils.h"
 #include "renderer/renderer.h"
 
 namespace Dodo {
@@ -9,30 +12,63 @@ namespace Dodo {
     class RendererVulkan : public Renderer
     {
     public:
-        RendererVulkan(Ref<RenderContextVulkan> render_context, RenderContext::Adapter::Type adapter_type);
+        RendererVulkan(Ref<RenderContextVulkan> context);
 
-        SwapchainHandle swapchain_create(SurfaceHandle surface) override;
-        void swapchain_begin_frame(SwapchainHandle swapchain) override;
-        void swapchain_present(SwapchainHandle swapchain) override;
-        void swapchain_on_resize(SwapchainHandle swapchain, uint32_t width, uint32_t height) override;
-        void swapchain_destroy(SwapchainHandle swapchain) override;
+        void initialize(size_t device_index) override;
+
+        SwapchainHandle swapchain_create(SurfaceHandle surface_handle, uint32_t desired_framebuffer_count = 3) override;
+        void swapchain_begin_frame(SwapchainHandle swapchain_handle) override;
+        void swapchain_present(SwapchainHandle swapchain_handle) override;
+        void swapchain_on_resize(SwapchainHandle swapchain_handle, uint32_t width, uint32_t height) override;
+        void swapchain_destroy(SwapchainHandle swapchain_handle) override;
 
         BufferHandle buffer_create(BufferUsage buffer_usage, size_t size, void* data = nullptr) override;
-        void buffer_upload_data(BufferHandle buffer, void* data, size_t size, size_t offset = 0) override;
-        void buffer_destroy(BufferHandle buffer) override;
+        void buffer_upload_data(BufferHandle buffer_handle, void* data, size_t size, size_t offset = 0) override;
+        void buffer_destroy(BufferHandle buffer_handle) override;
 
     private:
-        void _initialize_device();
-        std::optional<uint32_t> _find_queue_family_index(VkQueueFlags family) const;
-        void _request_extension(const std::string& name, bool is_required);
+        struct Queue {
+            VkQueue queue = nullptr;
+            uint32_t virtual_count = 0;
+        };
 
-        Ref<RenderContextVulkan> _render_context = nullptr;
-        size_t _device_index = 0;
+        struct Functions {
+            PFN_vkCreateSwapchainKHR CreateSwapchainKHR = nullptr;
+            PFN_vkGetSwapchainImagesKHR GetSwapchainImagesKHR = nullptr;
+            PFN_vkAcquireNextImageKHR AcquireNextImageKHR = nullptr;
+            PFN_vkQueuePresentKHR QueuePresentKHR = nullptr;
+            PFN_vkDestroySwapchainKHR DestroySwapchainKHR = nullptr;
+        };
+
+        struct SwapchainVulkan {
+            SurfaceHandle surface_handle = nullptr;
+            uint32_t framebuffer_count = 0;
+            uint32_t queue_family_index = 0;
+            uint32_t queue_index = 0;
+            VkSwapchainKHR swapchain = nullptr;
+            std::vector<VkImage> images = {};
+            std::vector<VkImageView> image_views = {};
+            VkRenderPass render_pass = nullptr;
+            std::vector<VkFramebuffer> framebuffers = {};
+        };
+
+        void _add_queue_create_infos();
+        void _initialize_device();
+        void _request_extension(const std::string& name, bool is_required);
+        void _create_swapchain();
+
+        Ref<RenderContextVulkan> _context = nullptr;
         VkPhysicalDevice _physical_device = nullptr;
-        std::optional<uint32_t> _graphics_queue_index{};
-        std::map<std::string, bool> _requested_extensions{};
-        std::vector<const char*> _enabled_extensions{};
+        std::vector<VkQueueFamilyProperties> _queue_families = {};
+        std::vector<std::vector<Queue>> _queues = {};
+        std::vector<VkDeviceQueueCreateInfo> _queue_create_infos = {};
+        std::map<std::string, bool> _requested_extensions = {};
+        std::vector<const char*> _enabled_extensions = {};
         VkDevice _device = nullptr;
+        Functions _functions = {};
+        SwapchainHandle _main_swapchain_handle = nullptr;
     };
 
 }
+
+#endif

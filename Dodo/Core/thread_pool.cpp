@@ -22,9 +22,6 @@ namespace Dodo {
                         task = task_queue.front();
                         task_queue.pop();
                         tasks[task->id] = task;
-                        if (!task->description.empty()) {
-                            set_thread_description(thread_handles.at(i), task->description);
-                        }
                     }
 
                     process_task(task);
@@ -32,7 +29,6 @@ namespace Dodo {
             });
 
             thread_handles.push_back(threads.back().native_handle());
-            set_thread_affinity(thread_handles.at(i), i);
         }
     }
 
@@ -72,19 +68,6 @@ namespace Dodo {
             task->condition_var.wait(lock, [task]() -> bool { return task->completed; });
             remove_task(task_id);
         }
-    }
-
-    void ThreadPool::set_thread_affinity(std::thread::native_handle_type thread_handle, uint64_t affinity) {
-#ifdef DODO_WINDOWS
-        SetThreadAffinityMask(thread_handle, static_cast<DWORD_PTR>(1 << affinity));
-#endif
-    }
-
-    void ThreadPool::set_thread_description(std::thread::native_handle_type thread_handle, const std::string& description) {
-#ifdef DODO_WINDOWS
-        const std::wstring name(description.begin(), description.end());
-        SetThreadDescription(thread_handle, name.c_str());
-#endif
     }
 
     void ThreadPool::process_task(std::shared_ptr<Task> task) {

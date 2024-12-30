@@ -30,8 +30,6 @@ namespace Dodo {
             uint32_t waiting_user_count = 0;
         };
 
-        void set_thread_affinity(std::thread::native_handle_type thread_handle, uint64_t affinity);
-        void set_thread_description(std::thread::native_handle_type thread_handle, const std::string& description);
         void process_task(std::shared_ptr<Task> task);
         std::shared_ptr<Task> find_task(TaskId task_id);
         void remove_task(TaskId task_id);

@@ -79,7 +79,7 @@ namespace Dodo {
                 return *this;
             }
 
-            other.reference();
+            other.Reference();
             UnReference();
             m_Instance = other.m_Instance;
             return *this;
@@ -88,7 +88,7 @@ namespace Dodo {
         template<typename Other>
         Ref& operator=(const Ref<Other>& other)
         {
-            other.reference();
+            other.Reference();
             UnReference();
             m_Instance = static_cast<Type*>(other.m_Instance);
             return *this;

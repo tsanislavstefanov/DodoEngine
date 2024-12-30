@@ -3,18 +3,16 @@
 #ifdef DODO_WINDOWS
 #   include "platforms/windows/display_windows.h"
 #endif
+#include "renderer/render_context.h"
 
 namespace Dodo {
 
-    Ref<Display> Display::create(RenderContext::Type context_type) {
+    Ref<Display> Display::create() {
 #ifdef DODO_WINDOWS
-        return Ref<DisplayWindows>::create(context_type);
+        return Ref<DisplayWindows>::create();
+#else
+        return nullptr;
 #endif
-    }
-
-    Ref<RenderContext> Display::get_render_context() const {
-        DODO_ASSERT(_render_context, "RenderContext is not initialized!");
-        return _render_context;
     }
 
 }
