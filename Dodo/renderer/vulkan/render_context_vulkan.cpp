@@ -57,6 +57,18 @@ namespace Dodo {
         _query_adapters_and_queue_families();
     }
 
+    void RenderContextVulkan::on_event(Display::Event& e) {
+        switch (e.type) {
+            case Display::Event::Type::window_resize: {
+                surface_on_resize(_surfaces.at(e.window_id), e.resized.width, e.resized.height);
+                break;
+            }
+
+            default:
+                break;
+        }
+    }
+
     RenderContext::Type RenderContextVulkan::get_type() const {
         return Type::vulkan;
     }
@@ -207,17 +219,12 @@ namespace Dodo {
         instance_create_info.ppEnabledExtensionNames = _enabled_extensions.data();
         DODO_ASSERT_VK_RESULT(vkCreateInstance(&instance_create_info, nullptr, &_instance));
 
-        // Debug messenger.
         _functions.CreateDebugUtilsMessengerEXT  = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT >(vkGetInstanceProcAddr(_instance, "vkCreateDebugUtilsMessengerEXT" ));
         _functions.DestroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(_instance, "vkDestroyDebugUtilsMessengerEXT"));
-
-        // Surface.
         _functions.GetPhysicalDeviceSurfaceSupportKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceSupportKHR>(vkGetInstanceProcAddr(_instance, "vkGetPhysicalDeviceSurfaceSupportKHR"));
         _functions.GetPhysicalDeviceSurfaceCapabilitiesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>(vkGetInstanceProcAddr(_instance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR"));
         _functions.GetPhysicalDeviceSurfaceFormatsKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceFormatsKHR>(vkGetInstanceProcAddr(_instance, "vkGetPhysicalDeviceSurfaceFormatsKHR"));
         _functions.GetPhysicalDeviceSurfacePresentModesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfacePresentModesKHR>(vkGetInstanceProcAddr(_instance, "vkGetPhysicalDeviceSurfacePresentModesKHR"));
-
-        // Device.
         _functions.GetDeviceProcAddr = reinterpret_cast<PFN_vkGetDeviceProcAddr>(vkGetInstanceProcAddr(_instance, "vkGetDeviceProcAddr"));
 
         if (_debug_utils_extension_enabled) {

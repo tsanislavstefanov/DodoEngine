@@ -24,7 +24,6 @@ namespace Dodo {
         surface_vk->width = surface_specs.width;
         surface_vk->height = surface_specs.height;
         surface_vk->vsync_mode = surface_specs.vsync_mode;
-        surface_vk->is_main_surface = surface_specs.is_main_surface;
 
         _surfaces[window_id] = SurfaceHandle(surface_vk);
         return _surfaces.at(window_id);

@@ -5,7 +5,6 @@
 
 namespace Dodo {
 
-    DODO_DEFINE_RENDER_HANDLE(CommandQueue);
     DODO_DEFINE_RENDER_HANDLE(Swapchain);
     DODO_DEFINE_RENDER_HANDLE(Buffer);
 
@@ -21,7 +20,7 @@ namespace Dodo {
 
         virtual void initialize(size_t device_index) = 0;
 
-        virtual SwapchainHandle swapchain_create(SurfaceHandle surface_handle, uint32_t desired_framebuffer_count = 3) = 0;
+        virtual SwapchainHandle swapchain_create(SurfaceHandle surface_handle, uint32_t desired_frame_count = 3) = 0;
         virtual void swapchain_begin_frame(SwapchainHandle swapchain_handle) = 0;
         virtual void swapchain_present(SwapchainHandle swapchain_handle) = 0;
         virtual void swapchain_on_resize(SwapchainHandle swapchain_handle, uint32_t width, uint32_t height) = 0;

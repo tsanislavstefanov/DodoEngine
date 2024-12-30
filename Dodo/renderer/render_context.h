@@ -19,6 +19,12 @@ namespace Dodo {
             none
         };
 
+        virtual ~RenderContext() = default;
+
+        virtual void initialize() = 0;
+        virtual void on_event(Display::Event& e) = 0;
+        virtual Type get_type() const = 0;
+
         enum class VSyncMode {
             disabled,
             enabled,
@@ -31,8 +37,13 @@ namespace Dodo {
             uint32_t width  = 0;
             uint32_t height = 0;
             VSyncMode vsync_mode = VSyncMode::none;
-            bool is_main_surface = false;
         };
+
+        virtual SurfaceHandle surface_create(Display::WindowId window_id, const SurfaceSpecifications& surface_specs, const void* platform_data) = 0;
+        virtual void surface_on_resize(SurfaceHandle surface_handle, uint32_t width, uint32_t height) = 0;
+        virtual void surface_destroy(SurfaceHandle surface_handle) = 0;
+
+        virtual Ref<Renderer> renderer_create() = 0;
 
         struct Adapter {
             enum class Type {
@@ -55,21 +66,10 @@ namespace Dodo {
                 none
             };
 
-            std::string name{};
+            std::string name = {};
             Type type = Type::none;
             Vendor vendor = Vendor::none;
         };
-
-        virtual ~RenderContext() = default;
-
-        virtual void initialize() = 0;
-        virtual Type get_type() const = 0;
-
-        virtual SurfaceHandle surface_create(Display::WindowId window_id, const SurfaceSpecifications& surface_specs, const void* platform_data) = 0;
-        virtual void surface_on_resize(SurfaceHandle surface_handle, uint32_t width, uint32_t height) = 0;
-        virtual void surface_destroy(SurfaceHandle surface_handle) = 0;
-
-        virtual Ref<Renderer> renderer_create() = 0;
 
         virtual uint32_t adapter_get_count() const = 0;
         virtual const Adapter& adapter_get(size_t index) const = 0;

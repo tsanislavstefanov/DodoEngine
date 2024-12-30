@@ -11,7 +11,10 @@ namespace Dodo {
             : handle{handle}
         {}
 
-        virtual ~RenderHandle() = default;
+        template<typename T>
+        T* cast_to() {
+            return reinterpret_cast<T*>(handle);
+        }
     };
 
 #define DODO_DEFINE_RENDER_HANDLE(NAME) \

@@ -13,7 +13,7 @@ namespace Dodo {
                 break;
             }
         }
-        
+
         _context->initialize();
         _renderer = _context->renderer_create();
         size_t device_index = 0;
@@ -37,7 +37,6 @@ namespace Dodo {
         main_surface_specs.width = main_window_specs.width;
         main_surface_specs.height = main_window_specs.height;
         main_surface_specs.vsync_mode = RenderContext::VSyncMode::enabled;
-        main_surface_specs.is_main_surface = true;
         _main_surface_handle = _context->surface_create(_main_window_id, main_surface_specs, _display->window_get_platform_data(_main_window_id));
 
         _renderer->swapchain_create(_main_surface_handle);
@@ -56,6 +55,8 @@ namespace Dodo {
         if (e.window_id == _main_window_id) {
             _main_window_on_event(e);
         }
+
+        _context->on_event(e);
     }
 
     void Engine::_main_window_on_event(Display::Event& e) {

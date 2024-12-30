@@ -11,7 +11,7 @@ namespace Dodo {
 
     static Log::TagDetailsMap s_default_tag_settings
     {
-        { "RenderDevice", Log::TagDetails{ true, Log::Level::trace }},
+        { "Renderer", Log::TagDetails{ true, Log::Level::trace }},
     };
 
     void Log::init()

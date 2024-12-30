@@ -29,7 +29,6 @@ namespace Dodo {
             uint32_t width = 0;
             uint32_t height = 0;
             VSyncMode vsync_mode = VSyncMode::none;
-            bool is_main_surface = false;
             bool needs_resize = false;
         };
 
@@ -37,6 +36,7 @@ namespace Dodo {
         virtual ~RenderContextVulkan() override;
 
         void initialize() override;
+        void on_event(Display::Event& e) override;
         Type get_type() const;
 
         SurfaceHandle surface_create(Display::WindowId window_id, const SurfaceSpecifications& surface_specs, const void* platform_data) override;
