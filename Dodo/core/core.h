@@ -1,14 +1,18 @@
 #pragma once
 
-#ifdef _WIN32
+#if defined(_WIN32)
 #   ifndef DODO_WINDOWS
 #      define DODO_WINDOWS
+#   endif
+#elif defined(__linux__)
+#   ifndef DODO_LINUX
+#       define DODO_LINUX
 #   endif
 #else
 #   error "Platform not supported!"
 #endif
 
-#ifdef DODO_WINDOWS
+#if defined(DODO_WINDOWS) || defined(DODO_LINUX)
 #   ifndef DODO_VULKAN
 #       define DODO_VULKAN
 #   endif
@@ -31,6 +35,10 @@
 #   ifdef DODO_WINDOWS
 #       ifndef DODO_DEBUG_BREAK
 #           define DODO_DEBUG_BREAK() __debugbreak()
+#       endif
+#   else
+#       ifndef DODO_DEBUG_BREAK
+#           define DODO_DEBUG_BREAK()
 #       endif
 #   endif
 #endif

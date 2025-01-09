@@ -37,16 +37,16 @@ namespace Dodo {
 
         void initialize() override;
         void on_event(Display::Event& e) override;
-        Type get_type() const;
+        Type get_type() const override;
 
         SurfaceHandle surface_create(Display::WindowId window_id, const SurfaceSpecifications& surface_specs, const void* platform_data) override;
         void surface_on_resize(SurfaceHandle surface_handle, uint32_t width, uint32_t height) override;
         void surface_destroy(SurfaceHandle surface_handle) override;
 
-        Ref<Renderer> renderer_create();
+        Ref<Renderer> renderer_create() override;
 
-        uint32_t adapter_get_count() const;
-        const Adapter& adapter_get(size_t index) const;
+        uint32_t adapter_get_count() const override;
+        const Adapter& adapter_get(size_t index) const override;
 
         uint32_t supported_api_version_get() const;
         VkInstance instance_get() const;

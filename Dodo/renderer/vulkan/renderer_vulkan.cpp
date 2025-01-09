@@ -123,7 +123,7 @@ namespace Dodo {
         _requested_extensions.insert({ name, is_required });
     }
 
-    CommandQueueFamilyHandle RendererVulkan::command_queue_family_get(const std::bitset<CommandQueueFamilyBits::count>& cmd_queue_family_bits, SurfaceHandle surface_handle) {
+    CommandQueueFamilyHandle RendererVulkan::command_queue_family_get(const std::bitset<COMMAND_QUEUE_FAMILY_MAX_COUNT>& cmd_queue_family_bits, SurfaceHandle surface_handle) {
         const uint32_t desired_queue_family_bits = cmd_queue_family_bits.to_ulong();
         VkQueueFlags picked_queue_bits = VK_QUEUE_FLAG_BITS_MAX_ENUM;
         uint32_t picked_queue_family_index = std::numeric_limits<uint32_t>::max();
@@ -153,21 +153,85 @@ namespace Dodo {
         DODO_ASSERT(cmd_queue_family_handle);
         auto command_queue = new CommandQueue();
         command_queue->queue_family_index = cmd_queue_family_handle.handle - 1;
-        // We can safely assume, that the queue index is 0, as we only have 1 queue per family.
+        // Safely assume that the queue index is 0 as there is only 1 queue per family.
         // command_queue->queue_index = 0;
         return CommandQueueHandle(command_queue);
     }
 
     void RendererVulkan::command_queue_destroy(CommandQueueHandle cmd_queue_handle) {
         DODO_ASSERT(cmd_queue_handle);
-        auto command_queue = reinterpret_cast<CommandQueue*>(cmd_queue_handle.handle);
+        auto command_queue = cmd_queue_handle.cast_to<CommandQueue*>();
         delete command_queue;
+    }
+
+    CommandListAllocatorHandle RendererVulkan::command_list_allocator_create(CommandQueueFamilyHandle cmd_queue_family_handle, CommandListType cmd_list_type) {
+        DODO_ASSERT(cmd_queue_family_handle);
+        const uint32_t queue_family_index = cmd_queue_family_handle.handle - 1;
+
+        VkCommandPoolCreateInfo create_info = {};
+        create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        create_info.queueFamilyIndex = queue_family_index;
+        VkCommandPool command_pool = nullptr;
+        DODO_ASSERT_VK_RESULT(vkCreateCommandPool(_device, &create_info, nullptr, &command_pool));
+
+        auto command_list_allocator = new CommandListAllocator();
+        command_list_allocator->command_pool_vk = command_pool;
+        command_list_allocator->command_list_type = cmd_list_type;
+        return CommandListAllocatorHandle(command_list_allocator);
+    }
+
+    void RendererVulkan::command_list_allocator_destroy(CommandListAllocatorHandle cmd_list_allocator_handle) {
+        DODO_ASSERT(cmd_list_allocator_handle);
+        auto command_list_allocator = cmd_list_allocator_handle.cast_to<CommandListAllocator*>();
+        vkDestroyCommandPool(_device, command_list_allocator->command_pool_vk, nullptr);
+        delete command_list_allocator;
+    }
+
+    CommandListHandle RendererVulkan::command_list_create(CommandListAllocatorHandle cmd_list_allocator_handle) {
+        DODO_ASSERT(cmd_list_allocator_handle);
+        auto command_list_allocator = cmd_list_allocator_handle.cast_to<CommandListAllocator*>();
+
+        VkCommandBufferLevel command_buffer_level = VK_COMMAND_BUFFER_LEVEL_MAX_ENUM;
+        if (command_list_allocator->command_list_type == CommandListType::primary) {
+            command_buffer_level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        }
+        else if (command_list_allocator->command_list_type == CommandListType::secondary) {
+            command_buffer_level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+        }
+
+        DODO_ASSERT(command_buffer_level != VK_COMMAND_BUFFER_LEVEL_MAX_ENUM);
+
+        VkCommandBufferAllocateInfo alloc_info = {};
+        alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        alloc_info.commandPool = command_list_allocator->command_pool_vk;
+        alloc_info.level = command_buffer_level;
+        alloc_info.commandBufferCount = 1;
+        VkCommandBuffer command_buffer = nullptr;
+        DODO_ASSERT_VK_RESULT(vkAllocateCommandBuffers(_device, &alloc_info, &command_buffer));
+        return CommandListHandle(command_buffer);
+    }
+
+    void RendererVulkan::command_list_begin(CommandListHandle cmd_list_handle) {
+        DODO_ASSERT(cmd_list_handle);
+        auto command_buffer = cmd_list_handle.cast_to<VkCommandBuffer>();
+
+        VkCommandBufferBeginInfo begin_info = {};
+        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        DODO_ASSERT_VK_RESULT(vkBeginCommandBuffer(command_buffer, &begin_info));
+    }
+
+    void RendererVulkan::command_list_end(CommandListHandle cmd_list_handle) {
+        DODO_ASSERT(cmd_list_handle);
+        auto command_buffer = cmd_list_handle.cast_to<VkCommandBuffer>();
+
+        DODO_ASSERT_VK_RESULT(vkEndCommandBuffer(command_buffer));
     }
 
     SwapChainHandle RendererVulkan::swap_chain_create(SurfaceHandle surface_handle) {
         DODO_ASSERT(surface_handle);
         const RenderContextVulkan::Functions& context_functions = _context->functions_get();
-        auto surface = reinterpret_cast<RenderContextVulkan::Surface*>(surface_handle.handle);
+        auto surface = surface_handle.cast_to<RenderContextVulkan::Surface*>();
         uint32_t format_count = 0;
         DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceFormatsKHR(_physical_device, surface->surface_vk, &format_count, nullptr));
         std::vector<VkSurfaceFormatKHR> formats(format_count);
@@ -189,14 +253,40 @@ namespace Dodo {
         swap_chain->surface_handle = surface_handle;
         swap_chain->format = picked_format;
         swap_chain->color_space = picked_color_space;
+
+        VkAttachmentDescription color_attachment = {};
+        color_attachment.format = swap_chain->format;
+        color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        VkAttachmentReference color_attachment_ref = {};
+        color_attachment_ref.attachment = 0;
+        color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        subpass.colorAttachmentCount = 1;
+        subpass.pColorAttachments = &color_attachment_ref;
+        VkRenderPassCreateInfo render_pass_create_info = {};
+        render_pass_create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        render_pass_create_info.attachmentCount = 1;
+        render_pass_create_info.pAttachments = &color_attachment;
+        render_pass_create_info.subpassCount = 1;
+        render_pass_create_info.pSubpasses = &subpass;
+        VkRenderPass render_pass = nullptr;
+        DODO_ASSERT_VK_RESULT(vkCreateRenderPass(_device, &render_pass_create_info, nullptr, &swap_chain->render_pass));
+
         return SwapChainHandle(swap_chain);
     }
 
     void RendererVulkan::swap_chain_resize(CommandQueueHandle cmd_queue_handle, SwapChainHandle swap_chain_handle, uint32_t desired_framebuffer_count) {
         DODO_ASSERT(cmd_queue_handle && swap_chain_handle);
 
-        auto command_queue = reinterpret_cast<CommandQueue*>(cmd_queue_handle.handle);
-        auto swap_chain = reinterpret_cast<SwapChain*>(swap_chain_handle.handle);
+        auto command_queue = cmd_queue_handle.cast_to<CommandQueue*>();
+        auto swap_chain = swap_chain_handle.cast_to<SwapChain*>();
 
         _swap_chain_release(swap_chain);
 
@@ -206,7 +296,7 @@ namespace Dodo {
         }
 
         const RenderContextVulkan::Functions& context_functions = _context->functions_get();
-        auto surface = reinterpret_cast<RenderContextVulkan::Surface*>(swap_chain->surface_handle.handle);
+        auto surface = swap_chain->surface_handle.cast_to<RenderContextVulkan::Surface*>();
         VkSurfaceCapabilitiesKHR surface_caps = {};
         DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceCapabilitiesKHR(_physical_device, surface->surface_vk, &surface_caps));
 
@@ -255,6 +345,45 @@ namespace Dodo {
         swap_chain_create_info.presentMode = picked_present_mode;
         swap_chain_create_info.clipped = true;
         DODO_ASSERT_VK_RESULT(_functions.CreateSwapchainKHR(_device, &swap_chain_create_info, nullptr, &swap_chain->swap_chain_vk));
+
+        uint32_t image_count = 0;
+        DODO_ASSERT_VK_RESULT(_functions.GetSwapchainImagesKHR(_device, swap_chain->swap_chain_vk, &image_count, nullptr));
+        swap_chain->images.resize(image_count);
+        DODO_ASSERT_VK_RESULT(_functions.GetSwapchainImagesKHR(_device, swap_chain->swap_chain_vk, &image_count, swap_chain->images.data()));
+
+        VkImageViewCreateInfo image_view_create_info = {};
+        image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        image_view_create_info.format = swap_chain->format;
+        image_view_create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        image_view_create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        image_view_create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        image_view_create_info.subresourceRange.baseMipLevel = 0;
+        image_view_create_info.subresourceRange.levelCount = 1;
+        image_view_create_info.subresourceRange.baseArrayLayer = 0;
+        image_view_create_info.subresourceRange.layerCount = 1;
+
+        swap_chain->image_views.resize(image_count);
+        for (size_t i = 0; i < swap_chain->image_views.size(); i++) {
+            image_view_create_info.image = swap_chain->images.at(i);
+            DODO_ASSERT_VK_RESULT(vkCreateImageView(_device, &image_view_create_info, nullptr, &swap_chain->image_views.at(i)));
+        }
+
+        VkFramebufferCreateInfo framebuffer_create_info = {};
+        framebuffer_create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebuffer_create_info.renderPass = swap_chain->render_pass;
+        framebuffer_create_info.attachmentCount = 1;
+        framebuffer_create_info.width = extent.width;
+        framebuffer_create_info.height = extent.height;
+        framebuffer_create_info.layers = 1;
+
+        swap_chain->framebuffers.resize(image_count);
+        for (size_t i = 0; i < swap_chain->framebuffers.size(); i++) {
+            framebuffer_create_info.pAttachments = &swap_chain->image_views.at(i);
+            DODO_ASSERT_VK_RESULT(VkCreateFramebuffer(_device, &framebuffer_create_info, nullptr, &swap_chain->framebuffers.at(i)));
+        }
     }
 
     void RendererVulkan::swapchain_begin_frame(SwapChainHandle swap_chain_handle)
@@ -274,105 +403,22 @@ namespace Dodo {
 
     void RendererVulkan::swap_chain_destroy(SwapChainHandle swap_chain_handle) {
         DODO_ASSERT(swap_chain_handle);
-        auto swap_chain = reinterpret_cast<SwapChain*>(swap_chain_handle.handle);
+        auto swap_chain = swap_chain_handle.cast_to<SwapChain*>();
         _swap_chain_release(swap_chain);
         delete swap_chain;
     }
 
-    void RendererVulkan::_swap_chain_invalidate(SwapChainHandle swap_chain_handle, uint32_t desired_framebuffer_count) {
-        auto swap_chain = reinterpret_cast<SwapChain*>(swap_chain_handle.handle);
-        auto surface = reinterpret_cast<RenderContextVulkan::Surface*>(swap_chain->surface_handle.handle);
-        const RenderContextVulkan::Functions& context_functions = _context->functions_get();
-
-        _swap_chain_release(swap_chain_handle);
-
-        VkSurfaceCapabilitiesKHR surface_caps = {};
-        DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceCapabilitiesKHR(_physical_device, surface->surface_vk, &surface_caps));
-        uint32_t picked_image_count = std::max(desired_framebuffer_count, surface_caps.minImageCount + 1);
-        if (surface_caps.maxImageCount > 0) {
-            picked_image_count = std::min(picked_image_count, surface_caps.maxImageCount);
-        }
-
-        VkExtent2D extent = surface_caps.currentExtent;
-        if (extent.width == std::numeric_limits<uint32_t>::max()) {
-            extent.width = std::clamp(surface->width, surface_caps.minImageExtent.width, surface_caps.maxImageExtent.width);
-            extent.height = std::clamp(surface->height, surface_caps.minImageExtent.height, surface_caps.maxImageExtent.height);
-        }
-        else {
-            surface->width = extent.width;
-            surface->height = extent.height;
-        }
-
-        if ((extent.width == 0) || (extent.height == 0)) {
-            return;
-        }
-
-        VkSharingMode picked_image_sharing_mode = VK_SHARING_MODE_EXCLUSIVE;
-        std::vector<uint32_t> queue_family_indices = {};
-        if (_main_queue_family_index != swap_chain->present_queue_family_index) {
-            picked_image_sharing_mode = VK_SHARING_MODE_CONCURRENT;
-            queue_family_indices.push_back(_main_queue_family_index);
-            queue_family_indices.push_back(swap_chain->present_queue_family_index);
-        }
-
-        uint32_t present_mode_count = 0;
-        context_functions.GetPhysicalDeviceSurfacePresentModesKHR(_physical_device, surface->surface_vk, &present_mode_count, nullptr);
-        std::vector<VkPresentModeKHR> present_modes(present_mode_count);
-        context_functions.GetPhysicalDeviceSurfacePresentModesKHR(_physical_device, surface->surface_vk, &present_mode_count, present_modes.data());
-        VkPresentModeKHR picked_present_mode = VK_PRESENT_MODE_FIFO_KHR;
-        const VkPresentModeKHR desired_present_mode = Utils::convert_to_present_mode(surface->vsync_mode);
-        for (size_t i = 0; i < present_modes.size(); i++) {
-            if (present_modes.at(i) == desired_present_mode) {
-                picked_present_mode = present_modes.at(i);
-                break;
-            }
-        }
-
-        VkSwapchainCreateInfoKHR swap_chain_create_info = {};
-        swap_chain_create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-        swap_chain_create_info.surface = surface->surface_vk;
-        swap_chain_create_info.minImageCount = picked_image_count;
-        swap_chain_create_info.imageFormat = swap_chain->format;
-        swap_chain_create_info.imageColorSpace = swap_chain->color_space;
-        swap_chain_create_info.imageExtent = extent;
-        swap_chain_create_info.imageArrayLayers = 1;
-        swap_chain_create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        swap_chain_create_info.imageSharingMode = picked_image_sharing_mode;
-        swap_chain_create_info.queueFamilyIndexCount = static_cast<uint32_t>(queue_family_indices.size());
-        swap_chain_create_info.pQueueFamilyIndices = queue_family_indices.data();
-        swap_chain_create_info.preTransform = surface_caps.currentTransform;
-        swap_chain_create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-        swap_chain_create_info.presentMode = picked_present_mode;
-        swap_chain_create_info.clipped = true;
-        DODO_ASSERT_VK_RESULT(_functions.CreateSwapchainKHR(_device, &swap_chain_create_info, nullptr, &swap_chain->swap_chain_vk));
-
-    }
-
-    void RendererVulkan::_swap_chain_select_format_and_color_space(SwapChainHandle swap_chain_handle, VkFormat desired_format, VkColorSpaceKHR desired_color_space) {
-        auto swap_chain = reinterpret_cast<SwapChain*>(swap_chain_handle.handle);
-        auto surface = reinterpret_cast<RenderContextVulkan::Surface*>(swap_chain->surface_handle.handle);
-        const RenderContextVulkan::Functions& context_functions = _context->functions_get();
-
-        uint32_t format_count = 0;
-        DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceFormatsKHR(_physical_device, surface->surface_vk, &format_count, nullptr));
-        std::vector<VkSurfaceFormatKHR> formats(format_count);
-        DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceFormatsKHR(_physical_device, surface->surface_vk, &format_count, formats.data()));
-
-        VkFormat picked_format = formats.back().format;
-        VkColorSpaceKHR picked_color_space = formats.back().colorSpace;
-        for (const auto& format : formats) {
-            if (format.format == desired_format && format.colorSpace == desired_color_space) {
-                picked_format = format.format;
-                picked_color_space = format.colorSpace;
-                break;
-            }
-        }
-
-        swap_chain->format = picked_format;
-        swap_chain->color_space = picked_color_space;
-    }
-
     void RendererVulkan::_swap_chain_release(SwapChain* swap_chain) {
+        for (size_t i = 0; i < swap_chain->framebuffers.size(); i++) {
+            vkDestroyFramebuffer(_device, swap_chain->framebuffers.at(i), nullptr);
+        }
+
+        swap_chain->framebuffers.clear();
+        for (size_t i = 0; i < swap_chain->image_views.size(); i++) {
+            vkDestroyImageView(_device, swap_chain->image_views.at(i), nullptr);
+        }
+
+        swap_chain->image_views.clear();
 
         if (swap_chain->swap_chain_vk) {
             _functions.DestroySwapchainKHR(_device, swap_chain->swap_chain_vk, nullptr);

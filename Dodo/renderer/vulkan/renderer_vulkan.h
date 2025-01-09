@@ -39,7 +39,7 @@ namespace Dodo {
         Functions _functions = {};
 
     public:
-        CommandQueueFamilyHandle command_queue_family_get(const std::bitset<CommandQueueFamilyBits::count>& cmd_queue_family_bits, SurfaceHandle surface_handle) override;
+        CommandQueueFamilyHandle command_queue_family_get(const std::bitset<COMMAND_QUEUE_FAMILY_MAX_COUNT>& cmd_queue_family_bits, SurfaceHandle surface_handle) override;
         CommandQueueHandle command_queue_create(CommandQueueFamilyHandle cmd_queue_family_handle) override;
         void command_queue_destroy(CommandQueueHandle cmd_queue_handle) override;
 
@@ -51,6 +51,20 @@ namespace Dodo {
         };
 
     public:
+        CommandListAllocatorHandle command_list_allocator_create(CommandQueueFamilyHandle cmd_queue_family_handle, CommandListType cmd_list_type) override;
+        void command_list_allocator_destroy(CommandListAllocatorHandle cmd_list_allocator_handle) override;
+
+    private:
+        struct CommandListAllocator {
+            VkCommandPool command_pool_vk = nullptr;
+            CommandListType command_list_type = CommandListType::none;
+        };
+
+    public:
+        CommandListHandle command_list_create(CommandListAllocatorHandle cmd_list_allocator_handle) override;
+        void command_list_begin(CommandListHandle cmd_list_handle) override;
+        void command_list_end(CommandListHandle cmd_list_handle) override;
+
         SwapChainHandle swap_chain_create(SurfaceHandle surface_handle) override;
         void swap_chain_resize(CommandQueueHandle cmd_queue_handle, SwapChainHandle swap_chain_handle, uint32_t desired_framebuffer_count = 3) override;
 
@@ -64,10 +78,10 @@ namespace Dodo {
             SurfaceHandle surface_handle = nullptr;
             VkFormat format = VK_FORMAT_UNDEFINED;
             VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+            VkRenderPass render_pass = nullptr;
             VkSwapchainKHR swap_chain_vk = nullptr;
             std::vector<VkImage> images = {};
             std::vector<VkImageView> image_views = {};
-            VkRenderPass render_pass = nullptr;
             std::vector<VkFramebuffer> framebuffers = {};
             std::vector<CommandQueue*> cmd_queues = {};
         };
