@@ -79,10 +79,10 @@ namespace Dodo {
     }
 
     void RenderContextVulkan::surface_on_resize(SurfaceHandle surface_handle, uint32_t width, uint32_t height) {
-        SurfaceVulkan* surface_vk = reinterpret_cast<SurfaceVulkan*>(surface_handle.handle);
-        surface_vk->width = width;
-        surface_vk->height = height;
-        surface_vk->needs_resize = true;
+        Surface* surface = reinterpret_cast<Surface*>(surface_handle.handle);
+        surface->width = width;
+        surface->height = height;
+        surface->needs_resize = true;
     }
 
     void RenderContextVulkan::surface_destroy(SurfaceHandle surface_handle) {
@@ -92,9 +92,9 @@ namespace Dodo {
 
         if (found != _surfaces.end()) {
             _surfaces.erase(found);
-            auto surface_vk = reinterpret_cast<SurfaceVulkan*>(surface_handle.handle);
-            vkDestroySurfaceKHR(_instance, surface_vk->surface, nullptr);
-            delete surface_vk;
+            auto surface = reinterpret_cast<Surface*>(surface_handle.handle);
+            vkDestroySurfaceKHR(_instance, surface->surface_vk, nullptr);
+            delete surface;
         }
     }
 
@@ -134,9 +134,11 @@ namespace Dodo {
         return _queue_families.at(device_index).at(queue_index);
     }
 
-    bool RenderContextVulkan::queue_family_supports_present(VkPhysicalDevice physical_device, uint32_t queue_family_index, VkSurfaceKHR surface) const {
+    bool RenderContextVulkan::queue_family_supports_present(VkPhysicalDevice physical_device, uint32_t queue_family_index, SurfaceHandle surface_handle) const {
+        DODO_ASSERT(surface_handle);
+        auto surface = reinterpret_cast<RenderContextVulkan::Surface*>(surface_handle.handle);
         VkBool32 supports_present = false;
-        DODO_ASSERT_VK_RESULT(_functions.GetPhysicalDeviceSurfaceSupportKHR(physical_device, queue_family_index, surface, &supports_present));
+        DODO_ASSERT_VK_RESULT(_functions.GetPhysicalDeviceSurfaceSupportKHR(physical_device, queue_family_index, surface->surface_vk, &supports_present));
         return supports_present;
     }
 
@@ -213,7 +215,7 @@ namespace Dodo {
         VkInstanceCreateInfo instance_create_info = {};
         instance_create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         instance_create_info.pApplicationInfo = &app_info;
-        instance_create_info.enabledLayerCount = _debug_utils_extension_enabled ? 1 : 0;
+        instance_create_info.enabledLayerCount = static_cast<uint32_t>(_debug_utils_extension_enabled ? 1 : 0);
         instance_create_info.ppEnabledLayerNames = _debug_utils_extension_enabled ? &_validation_layer_name : nullptr;
         instance_create_info.enabledExtensionCount = static_cast<uint32_t>(_enabled_extensions.size());
         instance_create_info.ppEnabledExtensionNames = _enabled_extensions.data();

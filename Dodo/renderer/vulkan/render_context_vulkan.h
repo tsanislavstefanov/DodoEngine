@@ -9,6 +9,14 @@ namespace Dodo {
 
     class RenderContextVulkan : public RenderContext {
     public:
+        struct Surface {
+            VkSurfaceKHR surface_vk = nullptr;
+            uint32_t width = 0;
+            uint32_t height = 0;
+            VSyncMode vsync_mode = VSyncMode::none;
+            bool needs_resize = false;
+        };
+
         struct Functions {
             // Debug messenger.
             PFN_vkCreateDebugUtilsMessengerEXT CreateDebugUtilsMessengerEXT = nullptr;
@@ -22,14 +30,6 @@ namespace Dodo {
 
             // Device.
             PFN_vkGetDeviceProcAddr GetDeviceProcAddr = nullptr;
-        };
-
-        struct SurfaceVulkan {
-            VkSurfaceKHR surface = nullptr;
-            uint32_t width = 0;
-            uint32_t height = 0;
-            VSyncMode vsync_mode = VSyncMode::none;
-            bool needs_resize = false;
         };
 
         RenderContextVulkan() = default;
@@ -54,7 +54,7 @@ namespace Dodo {
         VkPhysicalDevice physical_device_get(size_t device_index) const;
         uint32_t queue_family_get_count(size_t device_index) const;
         const VkQueueFamilyProperties& queue_family_get(size_t device_index, size_t queue_index) const;
-        bool queue_family_supports_present(VkPhysicalDevice physical_device, uint32_t queue_family_index, VkSurfaceKHR surface) const;
+        bool queue_family_supports_present(VkPhysicalDevice physical_device, uint32_t queue_family_index, SurfaceHandle surface_handle) const;
 
     protected:
         virtual const char* _get_platform_surface_extension() const = 0;

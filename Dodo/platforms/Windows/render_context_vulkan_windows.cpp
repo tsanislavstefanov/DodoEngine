@@ -12,20 +12,20 @@ namespace Dodo {
     SurfaceHandle RenderContextVulkanWindows::surface_create(Display::WindowId window_id, const SurfaceSpecifications& surface_specs, const void* platform_data) {
         const auto& data = *static_cast<const DisplayWindows::PlatformData*>(platform_data);
 
-        VkWin32SurfaceCreateInfoKHR surface_create_info = {};
-        surface_create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-        surface_create_info.hinstance = data.hinstance;
-        surface_create_info.hwnd = data.hwnd;
-        VkSurfaceKHR surface = nullptr;
-        DODO_ASSERT_VK_RESULT(vkCreateWin32SurfaceKHR(instance_get(), &surface_create_info, NULL, &surface));
+        VkWin32SurfaceCreateInfoKHR create_info = {};
+        create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+        create_info.hinstance = data.hinstance;
+        create_info.hwnd = data.hwnd;
+        VkSurfaceKHR surface_vk = nullptr;
+        DODO_ASSERT_VK_RESULT(vkCreateWin32SurfaceKHR(instance_get(), &create_info, NULL, &surface_vk));
 
-        auto surface_vk = new SurfaceVulkan();
-        surface_vk->surface = surface;
-        surface_vk->width = surface_specs.width;
-        surface_vk->height = surface_specs.height;
-        surface_vk->vsync_mode = surface_specs.vsync_mode;
+        auto surface = new Surface();
+        surface->surface_vk = surface_vk;
+        surface->width = surface_specs.width;
+        surface->height = surface_specs.height;
+        surface->vsync_mode = surface_specs.vsync_mode;
 
-        _surfaces[window_id] = SurfaceHandle(surface_vk);
+        _surfaces[window_id] = SurfaceHandle(surface);
         return _surfaces.at(window_id);
     }
 

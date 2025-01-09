@@ -84,7 +84,7 @@ namespace Dodo {
         }
     }
 
-    void DisplayWindows::window_set_event_callback(WindowId window_id, EventCallback&& callback) {
+    void DisplayWindows::window_set_event_callback(WindowId window_id, Func<void(Event&)>&& callback) {
         if (_window_data_by_id.contains(window_id)) {
             _window_data_by_id.at(window_id).event_callback = std::move(callback);
         }

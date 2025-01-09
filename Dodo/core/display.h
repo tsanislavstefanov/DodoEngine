@@ -42,8 +42,6 @@ namespace Dodo {
             };
         };
 
-        using EventCallback = Func<void(Event&)>;
-
         virtual WindowId window_create(const WindowSpecifications& window_specs) = 0;
         virtual void window_show_and_focus(WindowId window_id) = 0;
         virtual void window_focus(WindowId window_id) = 0;

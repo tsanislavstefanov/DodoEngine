@@ -10,18 +10,14 @@ namespace Dodo {
         RenderHandle(size_t handle)
             : handle{handle}
         {}
-
-        template<typename T>
-        T* cast_to() {
-            return reinterpret_cast<T*>(handle);
-        }
     };
 
 #define DODO_DEFINE_RENDER_HANDLE(NAME) \
     struct NAME##Handle : public RenderHandle \
     { \
         NAME##Handle() = default; \
-        NAME##Handle(void* handle) : RenderHandle(reinterpret_cast<size_t>(handle)) {} \
+        NAME##Handle(size_t handle) : RenderHandle(handle) {} \
+        NAME##Handle(void*  handle) : RenderHandle(reinterpret_cast<size_t>(handle)) {} \
         NAME##Handle(const NAME##Handle& other) : RenderHandle(other.handle) {} \
         operator bool() const { return handle != 0; } \
         NAME##Handle& operator=(const NAME##Handle& other) { \

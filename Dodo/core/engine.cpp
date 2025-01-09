@@ -39,7 +39,10 @@ namespace Dodo {
         main_surface_specs.vsync_mode = RenderContext::VSyncMode::enabled;
         _main_surface_handle = _context->surface_create(_main_window_id, main_surface_specs, _display->window_get_platform_data(_main_window_id));
 
-        _renderer->swapchain_create(_main_surface_handle);
+        std::bitset<Renderer::CommandQueueFamilyBits::count> main_queue_family_bits = {};
+        main_queue_family_bits.set(Renderer::CommandQueueFamilyBits::graphics);
+        CommandQueueFamilyHandle cmd_queue_family_handle = _renderer->command_queue_family_get(main_queue_family_bits, _main_surface_handle);
+        _renderer->swap_chain_create(_main_surface_handle);
     }
 
     Engine::~Engine() {
