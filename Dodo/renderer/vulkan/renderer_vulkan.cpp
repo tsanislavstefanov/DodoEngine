@@ -210,9 +210,8 @@ namespace Dodo {
         VkSurfaceCapabilitiesKHR surface_caps = {};
         DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceCapabilitiesKHR(_physical_device, surface->surface_vk, &surface_caps));
 
-        // A max image count of 0 means we can have any number of images.
-        // However, if that number is defined, we have to clamp to the capabilities of the surface.
         uint32_t picked_image_count = std::max(desired_framebuffer_count, surface_caps.minImageCount + 1);
+        // A max image count of 0 means we can have any number of images.
         if (surface_caps.maxImageCount > 0) {
             picked_image_count = std::min(picked_image_count, surface_caps.maxImageCount);
         }
@@ -223,8 +222,8 @@ namespace Dodo {
             extent.height = std::clamp(surface->height, surface_caps.minImageExtent.height, surface_caps.maxImageExtent.height);
         }
 
-        // Surface has no valid extent, so we cannot create a swap chain.
         if ((extent.width == 0) || (extent.height == 0)) {
+            // We cannot create the swap chain, since the surface has no valid extent.
             return;
         }
 
