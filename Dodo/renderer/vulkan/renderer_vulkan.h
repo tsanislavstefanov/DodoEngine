@@ -39,8 +39,9 @@ namespace Dodo {
         Functions _functions = {};
 
     public:
-        CommandQueueFamilyHandle command_queue_family_get(const std::bitset<COMMAND_QUEUE_FAMILY_MAX_COUNT>& cmd_queue_family_bits, SurfaceHandle surface_handle) override;
+        CommandQueueFamilyHandle command_queue_family_get(CommandQueueFamilyType cmd_queue_family_type, SurfaceHandle surface_handle) override;
         CommandQueueHandle command_queue_create(CommandQueueFamilyHandle cmd_queue_family_handle) override;
+        void command_queue_execute_and_present(CommandQueueHandle cmd_queue_handle, CommandListHandle* cmd_list_handles, SwapChainHandle* swap_chain_handles) override;
         void command_queue_destroy(CommandQueueHandle cmd_queue_handle) override;
 
     private:
@@ -57,7 +58,7 @@ namespace Dodo {
     private:
         struct CommandListAllocator {
             VkCommandPool command_pool_vk = nullptr;
-            CommandListType command_list_type = CommandListType::none;
+            CommandListType command_list_type = CommandListType::primary;
         };
 
     public:
@@ -66,11 +67,9 @@ namespace Dodo {
         void command_list_end(CommandListHandle cmd_list_handle) override;
 
         SwapChainHandle swap_chain_create(SurfaceHandle surface_handle) override;
+        void swap_chain_begin_frame(SwapChainHandle swap_chain_handle, bool& needs_resize) override;
         void swap_chain_resize(CommandQueueHandle cmd_queue_handle, SwapChainHandle swap_chain_handle, uint32_t desired_framebuffer_count = 3) override;
-
-        void swapchain_begin_frame(SwapChainHandle swap_chain_handle) override;
-        void swapchain_present(SwapChainHandle swap_chain_handle) override;
-        void swapchain_on_resize(SwapChainHandle swap_chain_handle, uint32_t width, uint32_t height) override;
+        FramebufferHandle swap_chain_get_framebuffer(SwapChainHandle swap_chain_handle, bool& needs_resize) override;
         void swap_chain_destroy(SwapChainHandle swap_chain_handle) override;
 
     private:
@@ -83,6 +82,7 @@ namespace Dodo {
             std::vector<VkImage> images = {};
             std::vector<VkImageView> image_views = {};
             std::vector<VkFramebuffer> framebuffers = {};
+            uint32_t image_index = 0;
             std::vector<CommandQueue*> cmd_queues = {};
         };
 

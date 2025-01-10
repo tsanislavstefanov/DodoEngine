@@ -40,6 +40,7 @@ namespace Dodo {
         Type get_type() const override;
 
         SurfaceHandle surface_create(Display::WindowId window_id, const SurfaceSpecifications& surface_specs, const void* platform_data) override;
+        bool surface_get_needs_resize(SurfaceHandle surface_handle) override;
         void surface_on_resize(SurfaceHandle surface_handle, uint32_t width, uint32_t height) override;
         void surface_destroy(SurfaceHandle surface_handle) override;
 

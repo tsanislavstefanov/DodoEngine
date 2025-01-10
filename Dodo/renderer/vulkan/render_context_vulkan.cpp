@@ -78,8 +78,14 @@ namespace Dodo {
         return SurfaceHandle(nullptr);
     }
 
+    bool RenderContextVulkan::surface_get_needs_resize(SurfaceHandle surface_handle) {
+        DODO_ASSERT(surface_handle);
+        auto surface = surface_handle.cast_to<Surface*>();
+        return surface->needs_resize;
+    }
+
     void RenderContextVulkan::surface_on_resize(SurfaceHandle surface_handle, uint32_t width, uint32_t height) {
-        Surface* surface = reinterpret_cast<Surface*>(surface_handle.handle);
+        auto surface = surface_handle.cast_to<Surface*>();
         surface->width = width;
         surface->height = height;
         surface->needs_resize = true;
@@ -92,7 +98,7 @@ namespace Dodo {
 
         if (found != _surfaces.end()) {
             _surfaces.erase(found);
-            auto surface = reinterpret_cast<Surface*>(surface_handle.handle);
+            auto surface = surface_handle.cast_to<Surface*>();
             vkDestroySurfaceKHR(_instance, surface->surface_vk, nullptr);
             delete surface;
         }
@@ -136,7 +142,7 @@ namespace Dodo {
 
     bool RenderContextVulkan::queue_family_supports_present(VkPhysicalDevice physical_device, uint32_t queue_family_index, SurfaceHandle surface_handle) const {
         DODO_ASSERT(surface_handle);
-        auto surface = reinterpret_cast<RenderContextVulkan::Surface*>(surface_handle.handle);
+        auto surface = surface_handle.cast_to<Surface*>();
         VkBool32 supports_present = false;
         DODO_ASSERT_VK_RESULT(_functions.GetPhysicalDeviceSurfaceSupportKHR(physical_device, queue_family_index, surface->surface_vk, &supports_present));
         return supports_present;
@@ -221,7 +227,7 @@ namespace Dodo {
         instance_create_info.ppEnabledExtensionNames = _enabled_extensions.data();
         DODO_ASSERT_VK_RESULT(vkCreateInstance(&instance_create_info, nullptr, &_instance));
 
-        _functions.CreateDebugUtilsMessengerEXT  = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT >(vkGetInstanceProcAddr(_instance, "vkCreateDebugUtilsMessengerEXT" ));
+        _functions.CreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(_instance, "vkCreateDebugUtilsMessengerEXT"));
         _functions.DestroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(_instance, "vkDestroyDebugUtilsMessengerEXT"));
         _functions.GetPhysicalDeviceSurfaceSupportKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceSupportKHR>(vkGetInstanceProcAddr(_instance, "vkGetPhysicalDeviceSurfaceSupportKHR"));
         _functions.GetPhysicalDeviceSurfaceCapabilitiesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR>(vkGetInstanceProcAddr(_instance, "vkGetPhysicalDeviceSurfaceCapabilitiesKHR"));

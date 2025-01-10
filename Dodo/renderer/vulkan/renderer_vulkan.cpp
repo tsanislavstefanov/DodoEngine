@@ -1,4 +1,5 @@
 #include "pch.h"
+#include <limits>
 
 #ifdef DODO_VULKAN
 
@@ -123,8 +124,18 @@ namespace Dodo {
         _requested_extensions.insert({ name, is_required });
     }
 
-    CommandQueueFamilyHandle RendererVulkan::command_queue_family_get(const std::bitset<COMMAND_QUEUE_FAMILY_MAX_COUNT>& cmd_queue_family_bits, SurfaceHandle surface_handle) {
-        const uint32_t desired_queue_family_bits = cmd_queue_family_bits.to_ulong();
+    CommandQueueFamilyHandle RendererVulkan::command_queue_family_get(CommandQueueFamilyType cmd_queue_family_type, SurfaceHandle surface_handle) {
+        VkQueueFlags desired_queue_bits = VK_QUEUE_FLAG_BITS_MAX_ENUM;
+        if (cmd_queue_family_type == CommandQueueFamilyType::draw) {
+            desired_queue_bits = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT;
+        }
+        else if (cmd_queue_family_type == CommandQueueFamilyType::compute) {
+            desired_queue_bits = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT;
+        }
+        else {
+            desired_queue_bits = VK_QUEUE_TRANSFER_BIT;
+        }
+
         VkQueueFlags picked_queue_bits = VK_QUEUE_FLAG_BITS_MAX_ENUM;
         uint32_t picked_queue_family_index = std::numeric_limits<uint32_t>::max();
         for (uint32_t i = 0; i < _queues.size(); i++) {
@@ -137,7 +148,7 @@ namespace Dodo {
             }
 
             const VkQueueFlags queue_family_bits = _queue_families.at(i).queueFlags;
-            const bool includes_all_bits = (queue_family_bits & desired_queue_family_bits) == desired_queue_family_bits;
+            const bool includes_all_bits = (queue_family_bits & desired_queue_bits) == desired_queue_bits;
             // Queue families that have less bits, like dedicated compute/transfer queue, will perform better.
             const bool has_less_bits = queue_family_bits < picked_queue_bits;
             if (includes_all_bits && has_less_bits) {
@@ -156,6 +167,10 @@ namespace Dodo {
         // Safely assume that the queue index is 0 as there is only 1 queue per family.
         // command_queue->queue_index = 0;
         return CommandQueueHandle(command_queue);
+    }
+
+    void RendererVulkan::command_queue_execute_and_present(CommandQueueHandle cmd_queue_handle, CommandListHandle* cmd_list_handles, SwapChainHandle* swap_chain_handles) {
+        DODO_ASSERT(cmd_queue_handle);
     }
 
     void RendererVulkan::command_queue_destroy(CommandQueueHandle cmd_queue_handle) {
@@ -192,15 +207,10 @@ namespace Dodo {
         DODO_ASSERT(cmd_list_allocator_handle);
         auto command_list_allocator = cmd_list_allocator_handle.cast_to<CommandListAllocator*>();
 
-        VkCommandBufferLevel command_buffer_level = VK_COMMAND_BUFFER_LEVEL_MAX_ENUM;
-        if (command_list_allocator->command_list_type == CommandListType::primary) {
-            command_buffer_level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        }
-        else if (command_list_allocator->command_list_type == CommandListType::secondary) {
+        VkCommandBufferLevel command_buffer_level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        if (command_list_allocator->command_list_type == CommandListType::secondary) {
             command_buffer_level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
         }
-
-        DODO_ASSERT(command_buffer_level != VK_COMMAND_BUFFER_LEVEL_MAX_ENUM);
 
         VkCommandBufferAllocateInfo alloc_info = {};
         alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -230,8 +240,10 @@ namespace Dodo {
 
     SwapChainHandle RendererVulkan::swap_chain_create(SurfaceHandle surface_handle) {
         DODO_ASSERT(surface_handle);
+
         const RenderContextVulkan::Functions& context_functions = _context->functions_get();
         auto surface = surface_handle.cast_to<RenderContextVulkan::Surface*>();
+
         uint32_t format_count = 0;
         DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceFormatsKHR(_physical_device, surface->surface_vk, &format_count, nullptr));
         std::vector<VkSurfaceFormatKHR> formats(format_count);
@@ -280,6 +292,24 @@ namespace Dodo {
         DODO_ASSERT_VK_RESULT(vkCreateRenderPass(_device, &render_pass_create_info, nullptr, &swap_chain->render_pass));
 
         return SwapChainHandle(swap_chain);
+    }
+
+    void RendererVulkan::swap_chain_begin_frame(SwapChainHandle swap_chain_handle, bool& needs_resize) {
+        DODO_ASSERT(swap_chain_handle);
+        auto swap_chain = swap_chain_handle.cast_to<SwapChain*>();
+        if ((swap_chain->swap_chain_vk != nullptr) && _context->surface_get_needs_resize(swap_chain->surface_handle)) {
+            needs_resize = true;
+            return;
+        }
+
+        static const auto default_timeout = std::numeric_limits<uint64_t>::max();
+        const VkResult result = _functions.AcquireNextImageKHR(_device, swap_chain->swap_chain_vk, default_timeout, nullptr /* semaphore! */, nullptr, &swap_chain->image_index);
+        if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+            needs_resize = true;
+            return;
+        }
+        
+        DODO_ASSERT((result != VK_SUCCESS) && (result != VK_SUBOPTIMAL_KHR));
     }
 
     void RendererVulkan::swap_chain_resize(CommandQueueHandle cmd_queue_handle, SwapChainHandle swap_chain_handle, uint32_t desired_framebuffer_count) {
@@ -385,20 +415,16 @@ namespace Dodo {
             DODO_ASSERT_VK_RESULT(VkCreateFramebuffer(_device, &framebuffer_create_info, nullptr, &swap_chain->framebuffers.at(i)));
         }
     }
+    
+    FramebufferHandle RendererVulkan::swap_chain_get_framebuffer(SwapChainHandle swap_chain_handle, bool& needs_resize) {
+        DODO_ASSERT(swap_chain_handle);
+        auto swap_chain = swap_chain_handle.cast_to<SwapChain*>();
+        if ((swap_chain->swap_chain_vk == nullptr) || _context->surface_get_needs_resize(swap_chain->surface_handle)) {
+            needs_resize = true;
+            return FramebufferHandle(); 
+        }
 
-    void RendererVulkan::swapchain_begin_frame(SwapChainHandle swap_chain_handle)
-    {
-        throw std::logic_error("The method or operation is not implemented.");
-    }
-
-    void RendererVulkan::swapchain_present(SwapChainHandle swap_chain_handle)
-    {
-        throw std::logic_error("The method or operation is not implemented.");
-    }
-
-    void RendererVulkan::swapchain_on_resize(SwapChainHandle swap_chain_handle, uint32_t width, uint32_t height)
-    {
-        throw std::logic_error("The method or operation is not implemented.");
+        return FramebufferHandle(swap_chain->framebuffers.at(swap_chain->image_index));
     }
 
     void RendererVulkan::swap_chain_destroy(SwapChainHandle swap_chain_handle) {

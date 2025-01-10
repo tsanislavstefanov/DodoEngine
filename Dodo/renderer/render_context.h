@@ -40,6 +40,7 @@ namespace Dodo {
         };
 
         virtual SurfaceHandle surface_create(Display::WindowId window_id, const SurfaceSpecifications& surface_specs, const void* platform_data) = 0;
+        virtual bool surface_get_needs_resize(SurfaceHandle surface_handle) = 0;
         virtual void surface_on_resize(SurfaceHandle surface_handle, uint32_t width, uint32_t height) = 0;
         virtual void surface_destroy(SurfaceHandle surface_handle) = 0;
 

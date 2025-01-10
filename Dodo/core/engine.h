@@ -33,6 +33,8 @@ namespace Dodo {
         Ref<RenderContext> _context = nullptr;
         Ref<Renderer> _renderer = nullptr;
         SurfaceHandle _main_surface_handle = nullptr;
+        CommandQueueHandle _main_queue_handle = nullptr;
+        SwapChainHandle _swap_chain_handle = nullptr;
     };
 
 }

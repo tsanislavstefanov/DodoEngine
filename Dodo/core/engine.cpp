@@ -39,10 +39,9 @@ namespace Dodo {
         main_surface_specs.vsync_mode = RenderContext::VSyncMode::enabled;
         _main_surface_handle = _context->surface_create(_main_window_id, main_surface_specs, _display->window_get_platform_data(_main_window_id));
 
-        std::bitset<Renderer::COMMAND_QUEUE_FAMILY_MAX_COUNT> main_queue_family_bits = {};
-        main_queue_family_bits.set(Renderer::COMMAND_QUEUE_FAMILY_DRAW_BIT);
-        const CommandQueueFamilyHandle cmd_queue_family_handle = _renderer->command_queue_family_get(main_queue_family_bits, _main_surface_handle);
-        _renderer->swap_chain_create(_main_surface_handle);
+        const CommandQueueFamilyHandle cmd_queue_family_handle = _renderer->command_queue_family_get(Renderer::CommandQueueFamilyType::draw, _main_surface_handle);
+        _main_queue_handle = _renderer->command_queue_create(cmd_queue_family_handle);
+        _swap_chain_handle = _renderer->swap_chain_create(_main_surface_handle);
     }
 
     Engine::~Engine() {
@@ -51,6 +50,13 @@ namespace Dodo {
     void Engine::iterate_main_loop() {
         while (_is_running) {
             _display->window_process_events(_main_window_id);
+
+            bool swap_chain_needs_resize = false;
+            _renderer->swap_chain_begin_frame(_swap_chain_handle, swap_chain_needs_resize);
+            if (swap_chain_needs_resize) {
+                _renderer->swap_chain_resize(_main_queue_handle, _swap_chain_handle/*, 3 */);
+                return;
+            }
         }
     }
 
