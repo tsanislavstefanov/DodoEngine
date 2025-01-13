@@ -41,35 +41,52 @@ namespace Dodo {
     public:
         CommandQueueFamilyHandle command_queue_family_get(CommandQueueFamilyType cmd_queue_family_type, SurfaceHandle surface_handle) override;
         CommandQueueHandle command_queue_create(CommandQueueFamilyHandle cmd_queue_family_handle) override;
-        void command_queue_execute_and_present(CommandQueueHandle cmd_queue_handle, CommandListHandle* cmd_list_handles, SwapChainHandle* swap_chain_handles) override;
+        void command_queue_execute_and_present(CommandQueueHandle cmd_queue_handle, SemaphoreHandle wait_semaphore_handle, const std::vector<CommandListHandle>& cmd_list_handles, SemaphoreHandle signal_semaphore_handle, FenceHandle fence_handle, SwapChainHandle swap_chain_handle) override;
         void command_queue_destroy(CommandQueueHandle cmd_queue_handle) override;
 
     private:
         struct CommandQueue {
             uint32_t queue_family_index = 0;
             uint32_t queue_index = 0;
-
         };
 
     public:
-        CommandListAllocatorHandle command_list_allocator_create(CommandQueueFamilyHandle cmd_queue_family_handle, CommandListType cmd_list_type) override;
-        void command_list_allocator_destroy(CommandListAllocatorHandle cmd_list_allocator_handle) override;
+        CommandListPoolHandle command_list_pool_create(CommandQueueFamilyHandle cmd_queue_family_handle, CommandListType cmd_list_type) override;
+        void command_list_pool_destroy(CommandListPoolHandle cmd_list_pool_handle) override;
 
     private:
-        struct CommandListAllocator {
-            VkCommandPool command_pool_vk = nullptr;
+        struct CommandListPool {
+            VkCommandPool vk_command_pool = VK_NULL_HANDLE;
             CommandListType command_list_type = CommandListType::primary;
         };
 
     public:
-        CommandListHandle command_list_create(CommandListAllocatorHandle cmd_list_allocator_handle) override;
+        CommandListHandle command_list_create(CommandListPoolHandle cmd_list_pool_handle) override;
         void command_list_begin(CommandListHandle cmd_list_handle) override;
         void command_list_end(CommandListHandle cmd_list_handle) override;
 
+        FenceHandle fence_create() override;
+        void fence_wait(FenceHandle fence_handle) override;
+        void fence_destroy(FenceHandle fence_handle) override;
+
+    private:
+        struct Fence {
+            VkFence vk_fence = VK_NULL_HANDLE;
+        };
+        
+    public:
+        SemaphoreHandle semaphore_create() override;
+        void semaphore_destroy(SemaphoreHandle semaphore_handle) override;
+
+    private:
+        struct Semaphore {
+            VkSemaphore vk_semaphore = VK_NULL_HANDLE;
+        };
+
+    public:
         SwapChainHandle swap_chain_create(SurfaceHandle surface_handle) override;
-        void swap_chain_begin_frame(SwapChainHandle swap_chain_handle, bool& needs_resize) override;
+        FramebufferHandle swap_chain_acquire_next_framebuffer(SemaphoreHandle semaphore_handle, SwapChainHandle swap_chain_handle, bool& needs_resize, FenceHandle fence_handle) override;
         void swap_chain_resize(CommandQueueHandle cmd_queue_handle, SwapChainHandle swap_chain_handle, uint32_t desired_framebuffer_count = 3) override;
-        FramebufferHandle swap_chain_get_framebuffer(SwapChainHandle swap_chain_handle, bool& needs_resize) override;
         void swap_chain_destroy(SwapChainHandle swap_chain_handle) override;
 
     private:
@@ -78,7 +95,7 @@ namespace Dodo {
             VkFormat format = VK_FORMAT_UNDEFINED;
             VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
             VkRenderPass render_pass = nullptr;
-            VkSwapchainKHR swap_chain_vk = nullptr;
+            VkSwapchainKHR vk_swap_chain = nullptr;
             std::vector<VkImage> images = {};
             std::vector<VkImageView> image_views = {};
             std::vector<VkFramebuffer> framebuffers = {};
@@ -86,7 +103,7 @@ namespace Dodo {
             std::vector<CommandQueue*> cmd_queues = {};
         };
 
-        void _swap_chain_release(SwapChain* swap_chain);
+        void _swap_chain_release(SwapChain* swap_chain) const;
 
     public:
         BufferHandle buffer_create(BufferUsage buffer_usage, size_t size, void* data = nullptr) override;

@@ -51,6 +51,20 @@ namespace Dodo {
         while (_is_running) {
             _display->window_process_events(_main_window_id);
 
+
+            // RENDER
+            // _begin_frame():
+            // 1. Wait for the fence of the current frame to signal that it's done.
+            // 2. Acquire the next framebuffer of the swap chain.
+            // 3. Begin/Reset command list recording for the current frame.
+            // 
+            // _end_frame():
+            // 1. End command list recording for the current frame.
+            // 
+            // _draw_frame():
+            // 1. Execute the command list for the current frame.
+            // 2. Present to the swap chain.
+
             bool swap_chain_needs_resize = false;
             _renderer->swap_chain_begin_frame(_swap_chain_handle, swap_chain_needs_resize);
             if (swap_chain_needs_resize) {
