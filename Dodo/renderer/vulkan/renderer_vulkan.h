@@ -4,6 +4,7 @@
 
 #include "vulkan_utils.h"
 #include "renderer/renderer.h"
+#include "renderer/render_handle_owner.h"
 
 namespace Dodo {
 
@@ -41,7 +42,6 @@ namespace Dodo {
     public:
         CommandQueueFamilyHandle command_queue_family_get(CommandQueueFamilyType command_queue_family_type, SurfaceHandle surface) override;
         CommandQueueHandle command_queue_create(CommandQueueFamilyHandle command_queue_family) override;
-        void command_queue_execute_and_present(CommandQueueHandle command_queue, SemaphoreHandle wait_semaphore, const std::vector<CommandListHandle>& command_lists, SemaphoreHandle signal_semaphore, FenceHandle fence, SwapChainHandle swap_chain) override;
         void command_queue_destroy(CommandQueueHandle command_queue) override;
 
     private:
@@ -50,21 +50,33 @@ namespace Dodo {
             uint32_t queue_index = 0;
         };
 
+        RenderHandleOwner<CommandQueueHandle, CommandQueueInfo> _command_queue_owner = {};
+
     public:
-        CommandPoolHandle command_pool_create(CommandQueueFamilyHandle command_queue_family, CommandListType command_list_type) override;
+        CommandPoolHandle command_pool_create(CommandQueueFamilyHandle command_queue_family) override;
         void command_pool_destroy(CommandPoolHandle command_pool) override;
 
     private:
         struct CommandPoolInfo {
-            CommandListType command_list_type = CommandListType::primary;
             VkCommandPool vk_command_pool = VK_NULL_HANDLE;
         };
 
-    public:
-        CommandListHandle command_list_create(CommandPoolHandle command_pool) override;
-        void command_list_begin(CommandListHandle command_list) override;
-        void command_list_end(CommandListHandle command_list) override;
+        RenderHandleOwner<CommandPoolHandle, CommandPoolInfo> _command_pool_owner = {};
 
+    public:
+        CommandBufferHandle command_buffer_create(CommandPoolHandle command_pool, CommandBufferType command_buffer_type) override;
+        void command_buffer_begin(CommandBufferHandle command_buffer) override;
+        void command_buffer_end(CommandBufferHandle command_buffer) override;
+
+    private:
+        struct CommandBufferInfo {
+            CommandBufferType command_buffer_type = COMMAND_BUFFER_TYPE_PRIMARY;
+            VkCommandBuffer vk_command_buffer = VK_NULL_HANDLE;
+        };
+
+        RenderHandleOwner<CommandBufferHandle, CommandBufferInfo> _command_buffer_owner = {};
+
+    public:
         FenceHandle fence_create() override;
         void fence_wait(FenceHandle fence) override;
         void fence_destroy(FenceHandle fence) override;
@@ -73,6 +85,8 @@ namespace Dodo {
         struct FenceInfo {
             VkFence vk_fence = VK_NULL_HANDLE;
         };
+
+        RenderHandleOwner<FenceHandle, FenceInfo> _fence_owner = {};
 
     public:
         SemaphoreHandle semaphore_create() override;
@@ -83,15 +97,17 @@ namespace Dodo {
             VkSemaphore vk_semaphore = VK_NULL_HANDLE;
         };
 
+        RenderHandleOwner<SemaphoreHandle, SemaphoreInfo> _semaphore_owner = {};
+
     public:
-        SwapChainHandle swap_chain_create(SurfaceHandle surface_handle) override;
-        FramebufferHandle swap_chain_acquire_next_framebuffer(SemaphoreHandle semaphore_handle, SwapChainHandle swap_chain_handle, FenceHandle fence_handle, SwapChainStatus& swap_chain_status) override;
+        SwapChainHandle swap_chain_create(SurfaceHandle surface) override;
+        FramebufferHandle swap_chain_acquire_next_framebuffer(CommandQueueHandle command_queue, SwapChainHandle swap_chain, SwapChainStatus& swap_chain_status) override;
         void swap_chain_resize(CommandQueueHandle command_queue, SwapChainHandle swap_chain, uint32_t desired_framebuffer_count = 3) override;
         void swap_chain_destroy(SwapChainHandle swap_chain) override;
 
     private:
         struct SwapChainInfo {
-            SurfaceHandle surface = SurfaceHandle::null();
+            SurfaceHandle surface = {};
             VkFormat vk_format = VK_FORMAT_UNDEFINED;
             VkColorSpaceKHR vk_color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
             VkRenderPass vk_render_pass = nullptr;
