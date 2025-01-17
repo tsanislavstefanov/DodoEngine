@@ -10,7 +10,7 @@ namespace Dodo {
     public:
         RenderContextVulkanWindows() = default;
 
-        SurfaceHandle surface_create(Display::WindowId window_id, const SurfaceSpecifications& surface_specs, const void* platform_data) override;
+        SurfaceHandle surface_create(Display::WindowId window, const SurfaceSpecifications& surface_specs, const void* platform_data) override;
 
     protected:
         const char* _get_platform_surface_extension() const override;

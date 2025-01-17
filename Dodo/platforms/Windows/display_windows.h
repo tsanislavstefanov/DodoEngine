@@ -39,9 +39,9 @@ namespace Dodo {
             Func<void(Event&)> event_callback{};
         };
 
-        std::vector<Ref<RenderContext>> _contexts{};
+        std::vector<Ref<RenderContext>> _contexts = {};
         WindowId _window_id_counter = 0;
-        std::map<WindowId, WindowData> _window_data_by_id{};
+        std::map<WindowId, WindowData> _window_data = {};
     };
 
 }

@@ -121,6 +121,8 @@ namespace Dodo {
         void _swap_chain_release(SwapChainInfo* swap_chain_info) const;
         FramebufferHandle _framebuffer_create();
 
+        RenderHandleOwner<SwapChainHandle, SwapChainInfo> _swap_chain_owner = {};
+
     public:
         BufferHandle buffer_create(BufferUsage buffer_usage, size_t size, void* data = nullptr) override;
         void buffer_upload_data(BufferHandle buffer_handle, void* data, size_t size, size_t offset = 0) override;

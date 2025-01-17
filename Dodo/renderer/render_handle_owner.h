@@ -27,7 +27,7 @@ namespace Dodo {
             return (static_cast<uint64_t>(generation) << 32) | index;
         }
 
-        T* get_or_null(Handle handle) {
+        T* get_or_null(Handle handle) const {
             const auto generation = static_cast<uint32_t>(handle.get_id() >> 32);
             const auto index = static_cast<uint32_t>(handle.get_id() & std::numeric_limits<uint32_t>::max());
             if ((_size <= index) || (generation != _generations.at(index)))  {
@@ -52,7 +52,7 @@ namespace Dodo {
     private:
         std::vector<uint32_t> _generations = {};
         std::vector<T> _data = {};
-        uint32_t _size = 0;
+        size_t _size = 0;
         std::vector<uint32_t> _free_list = {};
     };
 

@@ -210,7 +210,7 @@ namespace Dodo {
         _command_queue_owner.destroy(command_queue);
     }
 
-    CommandPoolHandle RendererVulkan::command_pool_create(CommandQueueFamilyHandle command_queue_family, CommandListType command_list_type) {
+    CommandPoolHandle RendererVulkan::command_pool_create(CommandQueueFamilyHandle command_queue_family) {
         DODO_ASSERT(!command_queue_family.is_null());
 
         VkCommandPoolCreateInfo create_info = {};
@@ -282,26 +282,26 @@ namespace Dodo {
         VkFence vk_fence  = VK_NULL_HANDLE;
         DODO_ASSERT_VK_RESULT(vkCreateFence(_device, &create_info, VK_NULL_HANDLE, &vk_fence));
 
-        auto fence_info = new FenceInfo();
-        fence_info->vk_fence = vk_fence;
-        return FenceHandle(fence_info);
+        FenceInfo fence_info = {};
+        fence_info.vk_fence = vk_fence;
+        return _fence_owner.create(fence_info);
     }
 
     void RendererVulkan::fence_wait(FenceHandle fence) {
         DODO_ASSERT(!fence.is_null());
-
-        auto fence_info = fence.cast_to<FenceInfo*>();
-        static const auto default_timeout = std::numeric_limits<uint64_t>::max();
-        DODO_ASSERT_VK_RESULT(vkWaitForFences(_device, 1, &fence_info->vk_fence, VK_TRUE, default_timeout));
-        DODO_ASSERT_VK_RESULT(vkResetFences(_device, 1, &fence_info->vk_fence));
+        if (FenceInfo* fence_info = _fence_owner.get_or_null(fence)) {
+            static const auto default_timeout = std::numeric_limits<uint64_t>::max();
+            DODO_ASSERT_VK_RESULT(vkWaitForFences(_device, 1, &fence_info->vk_fence, VK_TRUE, default_timeout));
+            DODO_ASSERT_VK_RESULT(vkResetFences(_device, 1, &fence_info->vk_fence));
+        }
     }
 
     void RendererVulkan::fence_destroy(FenceHandle fence) {
         DODO_ASSERT(!fence.is_null());
-
-        auto fence_info = fence.cast_to<FenceInfo*>();
-        vkDestroyFence(_device, fence_info->vk_fence, VK_NULL_HANDLE);
-        delete fence_info;
+        if (FenceInfo* fence_info = _fence_owner.get_or_null(fence)) {
+            vkDestroyFence(_device, fence_info->vk_fence, VK_NULL_HANDLE);
+            _fence_owner.destroy(fence);
+        }
     }
 
     SemaphoreHandle RendererVulkan::semaphore_create() {
@@ -310,28 +310,32 @@ namespace Dodo {
         VkSemaphore vk_semaphore = VK_NULL_HANDLE;
         DODO_ASSERT_VK_RESULT(vkCreateSemaphore(_device, &create_info, VK_NULL_HANDLE, &vk_semaphore));
 
-        auto semaphore_info = new SemaphoreInfo();
-        semaphore_info->vk_semaphore = vk_semaphore;
-        return SemaphoreHandle(semaphore_info);
+        SemaphoreInfo semaphore_info = {};
+        semaphore_info.vk_semaphore = vk_semaphore;
+        return _semaphore_owner.create(semaphore_info);
     }
 
     void RendererVulkan::semaphore_destroy(SemaphoreHandle semaphore) {
         DODO_ASSERT(!semaphore.is_null());
-
-        auto semaphore_info = semaphore.cast_to<SemaphoreInfo*>();
-        vkDestroySemaphore(_device, semaphore_info->vk_semaphore, VK_NULL_HANDLE);
-        delete semaphore_info;
+        if (SemaphoreInfo* semaphore_info = _semaphore_owner.get_or_null(semaphore)) {
+            vkDestroySemaphore(_device, semaphore_info->vk_semaphore, VK_NULL_HANDLE);
+            _semaphore_owner.destroy(semaphore);
+        }
     }
 
-    SwapChainHandle RendererVulkan::swap_chain_create(SurfaceHandle surface_handle) {
-        DODO_ASSERT(!surface_handle.is_null());
+    SwapChainHandle RendererVulkan::swap_chain_create(SurfaceHandle surface) {
+        DODO_ASSERT(!surface.is_null());
 
         const RenderContextVulkan::Functions& context_functions = _context->functions_get();
-        auto surface = surface_handle.cast_to<RenderContextVulkan::Surface*>();
+        VkSurfaceKHR vk_surface = _context->surface_get_vk_surface(surface);
+        if (!vk_surface) {
+            return SwapChainHandle();
+        }
+
         uint32_t format_count = 0;
-        DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceFormatsKHR(_physical_device, surface->surface_vk, &format_count, nullptr));
+        DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceFormatsKHR(_physical_device, vk_surface, &format_count, nullptr));
         std::vector<VkSurfaceFormatKHR> formats(format_count);
-        DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceFormatsKHR(_physical_device, surface->surface_vk, &format_count, formats.data()));
+        DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceFormatsKHR(_physical_device, vk_surface, &format_count, formats.data()));
 
         const VkFormat desired_format = VK_FORMAT_B8G8R8A8_SRGB;
         const VkColorSpaceKHR desired_color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
@@ -384,7 +388,7 @@ namespace Dodo {
 
         auto swap_chain_info = swap_chain.cast_to<SwapChainInfo*>();
         if ((swap_chain_info->vk_swap_chain == VK_NULL_HANDLE) && _context->surface_get_needs_resize(swap_chain_info->surface)) {
-            swap_chain_status = SwapChainStatus::out_of_date;
+            swap_chain_status = SWAP_CHAIN_STATUS_OUT_OF_DATE;
             return FramebufferHandle();
         }
 
@@ -394,7 +398,7 @@ namespace Dodo {
 
         const VkResult result = _functions.AcquireNextImageKHR(_device, swap_chain_info->vk_swap_chain, default_timeout, semaphore_info->vk_semaphore, VK_NULL_HANDLE, &swap_chain_info->image_index);
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-            swap_chain_status = SwapChainStatus::out_of_date;
+            swap_chain_status = SWAP_CHAIN_STATUS_OUT_OF_DATE;
             return FramebufferHandle();
         }
 

@@ -4,31 +4,19 @@
 
 #include "vulkan_utils.h"
 #include "renderer/render_context.h"
+#include "renderer/render_handle_owner.h"
 
 namespace Dodo {
 
     class RenderContextVulkan : public RenderContext {
     public:
-        struct Surface {
-            VkSurfaceKHR surface_vk = nullptr;
-            uint32_t width = 0;
-            uint32_t height = 0;
-            VSyncMode vsync_mode = VSyncMode::none;
-            bool needs_resize = false;
-        };
-
         struct Functions {
-            // Debug messenger.
             PFN_vkCreateDebugUtilsMessengerEXT CreateDebugUtilsMessengerEXT = nullptr;
             PFN_vkDestroyDebugUtilsMessengerEXT DestroyDebugUtilsMessengerEXT = nullptr;
-
-            // Surface.
             PFN_vkGetPhysicalDeviceSurfaceSupportKHR GetPhysicalDeviceSurfaceSupportKHR = nullptr;
             PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR GetPhysicalDeviceSurfaceCapabilitiesKHR = nullptr;
             PFN_vkGetPhysicalDeviceSurfaceFormatsKHR GetPhysicalDeviceSurfaceFormatsKHR = nullptr;
             PFN_vkGetPhysicalDeviceSurfacePresentModesKHR GetPhysicalDeviceSurfacePresentModesKHR = nullptr;
-
-            // Device.
             PFN_vkGetDeviceProcAddr GetDeviceProcAddr = nullptr;
         };
 
@@ -39,10 +27,20 @@ namespace Dodo {
         void on_event(Display::Event& e) override;
         Type get_type() const override;
 
-        SurfaceHandle surface_create(Display::WindowId window_id, const SurfaceSpecifications& surface_specs, const void* platform_data) override;
-        bool surface_get_needs_resize(SurfaceHandle surface_handle) override;
-        void surface_on_resize(SurfaceHandle surface_handle, uint32_t width, uint32_t height) override;
-        void surface_destroy(SurfaceHandle surface_handle) override;
+        struct SurfaceInfo {
+            VkSurfaceKHR vk_surface = nullptr;
+            uint32_t width = 0;
+            uint32_t height = 0;
+            VSyncMode vsync_mode = VSYNC_MODE_DISABLED;
+            bool needs_resize = false;
+        };
+
+        SurfaceHandle surface_create(Display::WindowId window, const SurfaceSpecifications& surface_specs, const void* platform_data) override;
+        void surface_set_size(SurfaceHandle surface, uint32_t width, uint32_t height) override;
+        bool surface_get_needs_resize(SurfaceHandle surface) override;
+        void surface_set_needs_resize(SurfaceHandle surface, bool needs_resize) override;
+        void surface_destroy(SurfaceHandle surface) override;
+        VkSurfaceKHR surface_get_vk_surface(SurfaceHandle surface);
 
         Ref<Renderer> renderer_create() override;
 
@@ -55,11 +53,12 @@ namespace Dodo {
         VkPhysicalDevice physical_device_get(size_t device_index) const;
         uint32_t queue_family_get_count(size_t device_index) const;
         const VkQueueFamilyProperties& queue_family_get(size_t device_index, size_t queue_index) const;
-        bool queue_family_supports_present(VkPhysicalDevice physical_device, uint32_t queue_family_index, SurfaceHandle surface_handle) const;
+        bool queue_family_supports_present(VkPhysicalDevice physical_device, uint32_t queue_family_index, SurfaceHandle surface) const;
 
     protected:
         virtual const char* _get_platform_surface_extension() const = 0;
 
+        RenderHandleOwner<SurfaceHandle, SurfaceInfo> _surface_owner = {};
         std::map<Display::WindowId, SurfaceHandle> _surfaces = {};
 
     private:

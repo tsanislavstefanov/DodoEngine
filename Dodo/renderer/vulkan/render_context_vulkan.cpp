@@ -45,10 +45,10 @@ namespace Dodo {
 
     RenderContextVulkan::~RenderContextVulkan() {
         if (_debug_utils_extension_enabled) {
-            _functions.DestroyDebugUtilsMessengerEXT(_instance, _debug_messenger, nullptr);
+            _functions.DestroyDebugUtilsMessengerEXT(_instance, _debug_messenger, VK_NULL_HANDLE);
         }
 
-        vkDestroyInstance(_instance, nullptr);
+        vkDestroyInstance(_instance, VK_NULL_HANDLE);
     }
 
     void RenderContextVulkan::initialize() {
@@ -60,7 +60,7 @@ namespace Dodo {
     void RenderContextVulkan::on_event(Display::Event& e) {
         switch (e.type) {
             case Display::Event::Type::window_resize: {
-                surface_on_resize(_surfaces.at(e.window_id), e.resized.width, e.resized.height);
+                surface_set_size(_surfaces.at(e.window), e.resized.width, e.resized.height);
                 break;
             }
 
@@ -70,37 +70,58 @@ namespace Dodo {
     }
 
     RenderContext::Type RenderContextVulkan::get_type() const {
-        return Type::vulkan;
+        return RENDER_CONTEXT_TYPE_VULKAN;
     }
 
-    SurfaceHandle RenderContextVulkan::surface_create(Display::WindowId window_id, const SurfaceSpecifications& surface_specs, const void* platform_data) {
+    SurfaceHandle RenderContextVulkan::surface_create(Display::WindowId window, const SurfaceSpecifications& surface_specs, const void* platform_data) {
         DODO_ASSERT(false);
-        return SurfaceHandle(nullptr);
+        return SurfaceHandle();
     }
 
-    bool RenderContextVulkan::surface_get_needs_resize(SurfaceHandle surface_handle) {
-        DODO_ASSERT(surface_handle);
-        auto surface = surface_handle.cast_to<Surface*>();
-        return surface->needs_resize;
+    void RenderContextVulkan::surface_set_size(SurfaceHandle surface, uint32_t width, uint32_t height) {
+        DODO_ASSERT(!surface.is_null());
+        if (SurfaceInfo* surface_info = _surface_owner.get_or_null(surface)) {
+            surface_info->width = width;
+            surface_info->height = height;
+            surface_info->needs_resize = true;
+        }
     }
 
-    void RenderContextVulkan::surface_on_resize(SurfaceHandle surface_handle, uint32_t width, uint32_t height) {
-        auto surface = surface_handle.cast_to<Surface*>();
-        surface->width = width;
-        surface->height = height;
-        surface->needs_resize = true;
+    bool RenderContextVulkan::surface_get_needs_resize(SurfaceHandle surface) {
+        DODO_ASSERT(!surface.is_null());
+        if (const SurfaceInfo* surface_info = _surface_owner.get_or_null(surface)) {
+            return surface_info->needs_resize;
+        }
+
+        return false;
     }
 
-    void RenderContextVulkan::surface_destroy(SurfaceHandle surface_handle) {
-        const auto found = std::ranges::find_if(_surfaces, [surface_handle](const auto& item) -> bool {
-            return item.second == surface_handle;
-        });
+    void RenderContextVulkan::surface_set_needs_resize(SurfaceHandle surface, bool needs_resize) {
+        DODO_ASSERT(!surface.is_null());
+        if (SurfaceInfo* surface_info = _surface_owner.get_or_null(surface)) {
+            surface_info->needs_resize = needs_resize;
+        }
+    }
 
-        if (found != _surfaces.end()) {
-            _surfaces.erase(found);
-            auto surface = surface_handle.cast_to<Surface*>();
-            vkDestroySurfaceKHR(_instance, surface->surface_vk, nullptr);
-            delete surface;
+    void RenderContextVulkan::surface_destroy(SurfaceHandle surface) {
+        DODO_ASSERT(!surface.is_null());
+        if (SurfaceInfo* surface_info = _surface_owner.get_or_null(surface)) {
+            const auto found = std::ranges::find_if(_surfaces, [surface](const auto& surface_by_window) -> bool {
+                return surface_by_window.second == surface;
+            });
+
+            if (found != _surfaces.end()) {
+                _surfaces.erase(found);
+                vkDestroySurfaceKHR(_instance, surface_info->vk_surface, VK_NULL_HANDLE);
+                _surface_owner.destroy(surface);
+            }
+        }
+    }
+
+    VkSurfaceKHR RenderContextVulkan::surface_get_vk_surface(SurfaceHandle surface) {
+        DODO_ASSERT(!surface.is_null());
+        if (SurfaceInfo* surface_info = _surface_owner.get_or_null(surface)) {
+            return surface_info->vk_surface;
         }
     }
 
@@ -140,12 +161,15 @@ namespace Dodo {
         return _queue_families.at(device_index).at(queue_index);
     }
 
-    bool RenderContextVulkan::queue_family_supports_present(VkPhysicalDevice physical_device, uint32_t queue_family_index, SurfaceHandle surface_handle) const {
-        DODO_ASSERT(surface_handle);
-        auto surface = surface_handle.cast_to<Surface*>();
-        VkBool32 supports_present = false;
-        DODO_ASSERT_VK_RESULT(_functions.GetPhysicalDeviceSurfaceSupportKHR(physical_device, queue_family_index, surface->surface_vk, &supports_present));
-        return supports_present;
+    bool RenderContextVulkan::queue_family_supports_present(VkPhysicalDevice physical_device, uint32_t queue_family_index, SurfaceHandle surface) const {
+        DODO_ASSERT(!surface.is_null());
+        if (SurfaceInfo* surface_info = _surface_owner.get_or_null(surface)) {
+            VkBool32 supports_present = VK_FALSE;
+            DODO_ASSERT_VK_RESULT(_functions.GetPhysicalDeviceSurfaceSupportKHR(physical_device, queue_family_index, surface_info->vk_surface, &supports_present));
+            return supports_present;
+        }
+        
+        return false;
     }
 
     VKAPI_ATTR VkBool32 VKAPI_CALL RenderContextVulkan::_report_validation_message(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity, VkDebugUtilsMessageTypeFlagsEXT message_type, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, void* user_data) {

@@ -52,11 +52,11 @@ namespace Dodo {
         ));
 
         if (!hwnd) {
-            return invalid_window_id;
+            return invalid_window;
         }
 
         const WindowId window_id = _window_id_counter++;
-        WindowData& data = _window_data_by_id[window_id];
+        WindowData& data = _window_data[window_id];
         data.window_id = window_id;
         data.platform_data.hinstance = hinstance;
         data.platform_data.hwnd = hwnd;
@@ -71,30 +71,30 @@ namespace Dodo {
     }
 
     void DisplayWindows::window_show_and_focus(WindowId window_id) {
-        if (_window_data_by_id.contains(window_id)) {
-            const WindowData& data = _window_data_by_id.at(window_id);
-            ShowWindow(_window_data_by_id.at(window_id).platform_data.hwnd, SW_SHOWDEFAULT);
+        if (_window_data.contains(window_id)) {
+            const WindowData& data = _window_data.at(window_id);
+            ShowWindow(_window_data.at(window_id).platform_data.hwnd, SW_SHOWDEFAULT);
             window_focus(window_id);
         }
     }
 
     void DisplayWindows::window_focus(WindowId window_id) {
-        if (_window_data_by_id.contains(window_id)) {
-            SetFocus(_window_data_by_id.at(window_id).platform_data.hwnd);
+        if (_window_data.contains(window_id)) {
+            SetFocus(_window_data.at(window_id).platform_data.hwnd);
         }
     }
 
-    void DisplayWindows::window_set_event_callback(WindowId window_id, Func<void(Event&)>&& callback) {
-        if (_window_data_by_id.contains(window_id)) {
-            _window_data_by_id.at(window_id).event_callback = std::move(callback);
+    void DisplayWindows::window_set_event_callback(WindowId window, Func<void(Event&)>&& callback) {
+        if (_window_data.contains(window)) {
+            _window_data.at(window).event_callback = std::move(callback);
         }
     }
 
-    void DisplayWindows::window_process_events(WindowId window_id) {
-        if (_window_data_by_id.contains(window_id)) {
+    void DisplayWindows::window_process_events(WindowId window) {
+        if (_window_data.contains(window)) {
             MSG msg = {};
             ZeroMemory(&msg, sizeof(MSG));
-            while (PeekMessageW(&msg, _window_data_by_id.at(window_id).platform_data.hwnd, 0, 0, PM_REMOVE)) {
+            while (PeekMessageW(&msg, _window_data.at(window).platform_data.hwnd, 0, 0, PM_REMOVE)) {
                 // Translate virtual key message into character message.
                 TranslateMessage(&msg);
                 // Dispatch message to window procedure.
@@ -104,11 +104,11 @@ namespace Dodo {
     }
 
     const void* DisplayWindows::window_get_platform_data(WindowId window_id) const {
-        if (!_window_data_by_id.contains(window_id)) {
+        if (!_window_data.contains(window_id)) {
             return nullptr;
         }
 
-        return &_window_data_by_id.at(window_id).platform_data;
+        return &_window_data.at(window_id).platform_data;
     }
 
     uint32_t DisplayWindows::context_get_count() const {
