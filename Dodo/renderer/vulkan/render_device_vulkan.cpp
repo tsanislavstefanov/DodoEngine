@@ -1,20 +1,19 @@
 #include "pch.h"
-#include <limits>
 
 #ifdef DODO_VULKAN
 
-#include "renderer_vulkan.h"
-#include "render_context_vulkan.h"
+#include "render_device_vulkan.h"
+#include "render_backend_vulkan.h"
 
 namespace Dodo {
 
     namespace Utils {
 
-        static constexpr VkPresentModeKHR convert_to_present_mode(RenderContext::VSyncMode vsync_mode) {
+        static VkPresentModeKHR convert_to_present_mode(RenderBackend::VSyncMode vsync_mode) {
             switch (vsync_mode) {
-                case RenderContext::VSyncMode::disabled: return VK_PRESENT_MODE_IMMEDIATE_KHR;
-                case RenderContext::VSyncMode::enabled : return VK_PRESENT_MODE_FIFO_KHR;
-                case RenderContext::VSyncMode::mailbox : return VK_PRESENT_MODE_MAILBOX_KHR;
+                case RenderBackend::VSyncMode::enabled : return VK_PRESENT_MODE_FIFO_KHR;
+                case RenderBackend::VSyncMode::mailbox : return VK_PRESENT_MODE_MAILBOX_KHR;
+                case RenderBackend::VSyncMode::disabled: return VK_PRESENT_MODE_IMMEDIATE_KHR;
                 default: break;
             }
 
@@ -24,27 +23,27 @@ namespace Dodo {
 
     }
 
-    RendererVulkan::RendererVulkan(Ref<RenderContextVulkan> context) {
-        DODO_ASSERT(context);
-        _context = context;
+    RenderDeviceVulkan::RenderDeviceVulkan(Ref<RenderBackendVulkan> backend) {
+        DODO_ASSERT(backend);
+        _backend = backend;
     }
 
-    void RendererVulkan::initialize(size_t device_index) {
-        _physical_device = _context->physical_device_get(device_index);
+    void RenderDeviceVulkan::initialize(size_t index) {
+        _physical_device = _backend->physical_device_get(index);
 
         _queue_families.clear();
-        const uint32_t queue_family_count = _context->queue_family_get_count(device_index);
+        const uint32_t queue_family_count = _backend->queue_family_get_count(index);
         _queue_families.resize(queue_family_count);
-        for (size_t i = 0; i < queue_family_count; i++) {
-            _queue_families.at(i) = _context->queue_family_get(device_index, i);
+        for (uint32_t i = 0; i < queue_family_count; i++) {
+            _queue_families.at(i) = _backend->queue_family_get(index, i);
         }
-       
+
         std::vector<VkDeviceQueueCreateInfo> queue_create_infos = {};
         _add_queue_create_infos(queue_create_infos);
         _initialize_device(queue_create_infos);
     }
 
-    void RendererVulkan::_add_queue_create_infos(std::vector<VkDeviceQueueCreateInfo>& queue_create_infos) {
+    void RenderDeviceVulkan::_add_queue_create_infos(std::vector<VkDeviceQueueCreateInfo>& queue_create_infos) {
         _queues.clear();
         const size_t queue_family_count = _queue_families.size();
         _queues.resize(queue_family_count);
@@ -70,7 +69,7 @@ namespace Dodo {
         }
     }
 
-    void RendererVulkan::_initialize_device(std::vector<VkDeviceQueueCreateInfo>& queue_create_infos) {
+    void RenderDeviceVulkan::_initialize_device(std::vector<VkDeviceQueueCreateInfo>& queue_create_infos) {
         std::set<std::string> supported_extensions = {};
         uint32_t extension_count = 0;
         DODO_ASSERT_VK_RESULT(vkEnumerateDeviceExtensionProperties(_physical_device, nullptr, &extension_count, nullptr));
@@ -111,20 +110,20 @@ namespace Dodo {
             }
         }
 
-        const RenderContextVulkan::Functions& context_functions = _context->functions_get();
-        _functions.CreateSwapchainKHR = reinterpret_cast<PFN_vkCreateSwapchainKHR>(context_functions.GetDeviceProcAddr(_device, "vkCreateSwapchainKHR"));
-        _functions.GetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(context_functions.GetDeviceProcAddr(_device, "vkGetSwapchainImagesKHR"));
-        _functions.AcquireNextImageKHR = reinterpret_cast<PFN_vkAcquireNextImageKHR>(context_functions.GetDeviceProcAddr(_device, "vkAcquireNextImageKHR"));
-        _functions.QueuePresentKHR = reinterpret_cast<PFN_vkQueuePresentKHR>(context_functions.GetDeviceProcAddr(_device, "vkQueuePresentKHR"));
-        _functions.DestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(context_functions.GetDeviceProcAddr(_device, "vkDestroySwapchainKHR"));
+        const RenderBackendVulkan::Functions& backend_functions = _backend->functions_get();
+        _functions.CreateSwapchainKHR = reinterpret_cast<PFN_vkCreateSwapchainKHR>(backend_functions.GetDeviceProcAddr(_device, "vkCreateSwapchainKHR"));
+        _functions.GetSwapchainImagesKHR = reinterpret_cast<PFN_vkGetSwapchainImagesKHR>(backend_functions.GetDeviceProcAddr(_device, "vkGetSwapchainImagesKHR"));
+        _functions.AcquireNextImageKHR = reinterpret_cast<PFN_vkAcquireNextImageKHR>(backend_functions.GetDeviceProcAddr(_device, "vkAcquireNextImageKHR"));
+        _functions.QueuePresentKHR = reinterpret_cast<PFN_vkQueuePresentKHR>(backend_functions.GetDeviceProcAddr(_device, "vkQueuePresentKHR"));
+        _functions.DestroySwapchainKHR = reinterpret_cast<PFN_vkDestroySwapchainKHR>(backend_functions.GetDeviceProcAddr(_device, "vkDestroySwapchainKHR"));
     }
 
-    void RendererVulkan::_request_extension(const std::string& name, bool is_required) {
+    void RenderDeviceVulkan::_request_extension(const std::string& name, bool is_required) {
         DODO_ASSERT(!_requested_extensions.contains(name));
         _requested_extensions.insert({ name, is_required });
     }
 
-    CommandQueueFamilyHandle RendererVulkan::command_queue_family_get(CommandQueueFamilyType command_queue_family_type, SurfaceHandle surface) {
+    CommandQueueFamilyHandle RenderDeviceVulkan::command_queue_family_get(CommandQueueFamilyType command_queue_family_type, SurfaceHandle surface) {
         VkQueueFlags desired_queue_family_bits = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
         if (command_queue_family_type == COMMAND_QUEUE_FAMILY_TYPE_COMPUTE) {
             desired_queue_family_bits = VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
@@ -140,7 +139,7 @@ namespace Dodo {
                 continue;
             }
 
-            if (surface && !_context->queue_family_supports_present(_physical_device, i, surface)) {
+            if (surface && !_backend->queue_family_supports_present(_physical_device, i, surface)) {
                 continue;
             }
 
@@ -156,87 +155,89 @@ namespace Dodo {
         return CommandQueueFamilyHandle(picked_queue_family_index + 1);
     }
 
-    CommandQueueHandle RendererVulkan::command_queue_create(CommandQueueFamilyHandle command_queue_family) {
+    CommandQueueHandle RenderDeviceVulkan::command_queue_create(CommandQueueFamilyHandle command_queue_family) {
         DODO_ASSERT(!command_queue_family.is_null());
-        CommandQueueInfo command_queue_info = {};
+        CommandQueue command_queue_info = {};
         command_queue_info.queue_family_index = command_queue_family.get_id() - 1;
         return _command_queue_owner.create(command_queue_info);
     }
 
-    void RendererVulkan::command_queue_execute_and_present(CommandQueueHandle cmd_queue_handle, SemaphoreHandle wait_semaphore_handle, const std::vector<CommandListHandle>& cmd_list_handles, SemaphoreHandle signal_semaphore_handle, FenceHandle fence_handle, SwapChainHandle swap_chain_handle) {
-        DODO_ASSERT(cmd_queue_handle);
-
-        auto command_queue = cmd_queue_handle.cast_to<CommandQueue*>();
-        VkQueue device_queue = _queues.at(command_queue->queue_family_index).at(command_queue->queue_index);
+    bool RenderDeviceVulkan::command_queue_execute_and_present(CommandQueueHandle p_command_queue, const std::vector<SemaphoreHandle>& p_wait_semaphores, const std::vector<CommandBufferHandle>& p_command_buffers, const std::vector<SemaphoreHandle>& p_signal_semaphores, FenceHandle p_fence, SwapChainHandle p_swap_chain) {
+        DODO_ASSERT(!p_command_queue.is_null());
+        CommandQueue* command_queue = _command_queue_owner.get_or_null(p_command_queue);
+        if (!command_queue) {
+            return false;
+        }
 
         std::vector<VkSemaphore> wait_semaphores = {};
-        if (wait_semaphore_handle) {
-            auto wait_semaphore = wait_semaphore_handle.cast_to<Semaphore*>();
-            wait_semaphores.push_back(wait_semaphore->vk_semaphore);
+        std::vector<VkPipelineStageFlags> wait_stages = {};
+        for (uint32_t i = 0; i < command_queue->pending_semaphores_for_execute.size(); i++) {
+            const uint32_t semaphore_index = command_queue->pending_semaphores_for_execute.at(i);
+            VkSemaphore wait_semaphore = command_queue->image_semaphores.at(semaphore_index);
+            wait_semaphores.push_back(wait_semaphore);
+            wait_stages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
         }
 
-        const VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        command_queue->pending_semaphores_for_execute.clear();
+
+        for (uint32_t i = 0; i < p_wait_semaphores.size(); i++) {
+            VkSemaphore* wait_semaphore = _semaphore_owner.get_or_null(p_wait_semaphores.at(i));
+            if (wait_semaphore) {
+                wait_semaphores.push_back(*wait_semaphore);
+                wait_stages.push_back(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+            }
+        }
+
         std::vector<VkCommandBuffer> command_buffers = {};
-        for (CommandListHandle cmd_list_handle : cmd_list_handles) {
-            auto command_buffer = cmd_list_handle.cast_to<VkCommandBuffer>();
-            command_buffers.push_back(command_buffer);
+        for (uint32_t i = 0; i < p_command_buffers.size(); i++) {
+            CommandBuffer* command_buffer = _command_buffer_owner.get_or_null(p_command_buffers.at(i));
+            if (command_buffer) {
+                command_buffers.push_back(command_buffer->vk_command_buffer);
+            }
         }
 
-        std::vector<VkSemaphore> signal_semaphores = {};
-        if (signal_semaphore_handle) {
-            auto signal_semaphore = signal_semaphore_handle.cast_to<Semaphore*>();
-            signal_semaphores.push_back(signal_semaphore->vk_semaphore);
-        }
+		VkSubmitInfo submit_info = {};
+		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submit_info.waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores.size());
+		submit_info.pWaitSemaphores = wait_semaphores.data();
+		submit_info.pWaitDstStageMask = wait_stages.data();
+		submit_info.commandBufferCount = static_cast<uint32_t>(command_buffers.size());
+		submit_info.pCommandBuffers = command_buffers.data();
+		submit_info.signalSemaphoreCount = signal_semaphores.size();
+		submit_info.pSignalSemaphores = signal_semaphores.ptr();
 
-        auto fence = fence_handle.cast_to<Fence*>();
-        VkFence vk_fence = fence ? fence->vk_fence : VK_NULL_HANDLE;
-
-        VkSubmitInfo submit_info = {};
-        submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submit_info.waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores.size());
-        submit_info.pWaitSemaphores = wait_semaphores.data();
-        submit_info.pWaitDstStageMask = wait_stages;
-        submit_info.commandBufferCount = static_cast<uint32_t>(command_buffers.size());
-        submit_info.pCommandBuffers = command_buffers.data();
-        submit_info.signalSemaphoreCount = static_cast<uint32_t>(signal_semaphores.size());
-        submit_info.pSignalSemaphores = signal_semaphores.data();
-        DODO_ASSERT_VK_RESULT(vkQueueSubmit(device_queue, 1, &submit_info, fence->vk_fence));
-
+        VkQueue device_queue = _queues.at(command_queue->queue_family_index).at(command_queue->queue_index);
 
     }
 
-    void RendererVulkan::command_queue_destroy(CommandQueueHandle command_queue) {
+    void RenderDeviceVulkan::command_queue_destroy(CommandQueueHandle command_queue) {
         DODO_ASSERT(!command_queue.is_null());
         _command_queue_owner.destroy(command_queue);
     }
 
-    CommandPoolHandle RendererVulkan::command_pool_create(CommandQueueFamilyHandle command_queue_family) {
+    CommandPoolHandle RenderDeviceVulkan::command_pool_create(CommandQueueFamilyHandle command_queue_family) {
         DODO_ASSERT(!command_queue_family.is_null());
-
         VkCommandPoolCreateInfo create_info = {};
         create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         create_info.queueFamilyIndex = command_queue_family.get_id() - 1;
         VkCommandPool vk_command_pool = VK_NULL_HANDLE;
         DODO_ASSERT_VK_RESULT(vkCreateCommandPool(_device, &create_info, VK_NULL_HANDLE, &vk_command_pool));
-
-        CommandPoolInfo command_pool_info = {};
-        command_pool_info.vk_command_pool = vk_command_pool;
-        return _command_pool_owner.create(command_pool_info);
+        return _command_pool_owner.create(vk_command_pool);
     }
 
-    void RendererVulkan::command_pool_destroy(CommandPoolHandle command_pool) {
+    void RenderDeviceVulkan::command_pool_destroy(CommandPoolHandle command_pool) {
         DODO_ASSERT(!command_pool.is_null());
-        if (CommandPoolInfo* command_pool_info = _command_pool_owner.get_or_null(command_pool)) {
-            vkDestroyCommandPool(_device, command_pool_info->vk_command_pool, VK_NULL_HANDLE);
+        if (VkCommandPool* vk_command_pool = _command_pool_owner.get_or_null(command_pool)) {
+            vkDestroyCommandPool(_device, vk_command_pool, VK_NULL_HANDLE);
             _command_pool_owner.destroy(command_pool);
         }
     }
 
-    CommandBufferHandle RendererVulkan::command_buffer_create(CommandPoolHandle command_pool, CommandBufferType command_buffer_type) {
+    CommandBufferHandle RenderDeviceVulkan::command_buffer_create(CommandPoolHandle command_pool, CommandBufferType command_buffer_type) {
         DODO_ASSERT(!command_pool.is_null());
-        CommandPoolInfo* command_pool_info = _command_pool_owner.get_or_null(command_pool);
-        if (!command_pool_info) {
+        VkCommandPool* vk_command_pool = _command_pool_owner.get_or_null(command_pool);
+        if (!vk_command_pool) {
             return CommandBufferHandle();
         }
 
@@ -247,95 +248,115 @@ namespace Dodo {
 
         VkCommandBufferAllocateInfo alloc_info = {};
         alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        alloc_info.commandPool = command_pool_info->vk_command_pool;
+        alloc_info.commandPool = vk_command_pool;
         alloc_info.level = command_buffer_level;
         alloc_info.commandBufferCount = 1;
         VkCommandBuffer vk_command_buffer = VK_NULL_HANDLE;
         DODO_ASSERT_VK_RESULT(vkAllocateCommandBuffers(_device, &alloc_info, &vk_command_buffer));
 
-        CommandBufferInfo command_buffer_info = {};
+        CommandBuffer command_buffer_info = {};
         command_buffer_info.command_buffer_type = command_buffer_type;
         command_buffer_info.vk_command_buffer = vk_command_buffer;
         return _command_buffer_owner.create(command_buffer_info);
     }
 
-    void RendererVulkan::command_buffer_begin(CommandBufferHandle command_buffer) {
+    void RenderDeviceVulkan::command_buffer_begin(CommandBufferHandle command_buffer) {
         DODO_ASSERT(!command_buffer.is_null());
-        if (CommandBufferInfo* command_buffer_info = _command_buffer_owner.get_or_null(command_buffer)) {
+        if (CommandBuffer* command_buffer_info = _command_buffer_owner.get_or_null(command_buffer)) {
             VkCommandBufferBeginInfo begin_info = {};
             begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
             DODO_ASSERT_VK_RESULT(vkBeginCommandBuffer(command_buffer_info->vk_command_buffer, &begin_info));
         }
     }
 
-    void RendererVulkan::command_buffer_end(CommandBufferHandle command_buffer) {
+    void RenderDeviceVulkan::command_buffer_end(CommandBufferHandle command_buffer) {
         DODO_ASSERT(!command_buffer.is_null());
-        if (CommandBufferInfo* command_buffer_info = _command_buffer_owner.get_or_null(command_buffer)) {
+        if (CommandBuffer* command_buffer_info = _command_buffer_owner.get_or_null(command_buffer)) {
             DODO_ASSERT_VK_RESULT(vkEndCommandBuffer(command_buffer_info->vk_command_buffer));
         }
     }
 
-    FenceHandle RendererVulkan::fence_create() {
+    FenceHandle RenderDeviceVulkan::fence_create() {
         VkFenceCreateInfo create_info = {};
         create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         create_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
         VkFence vk_fence  = VK_NULL_HANDLE;
         DODO_ASSERT_VK_RESULT(vkCreateFence(_device, &create_info, VK_NULL_HANDLE, &vk_fence));
 
-        FenceInfo fence_info = {};
-        fence_info.vk_fence = vk_fence;
-        return _fence_owner.create(fence_info);
+        Fence fence = {};
+        fence.vk_fence = vk_fence;
+        return _fence_owner.create(fence);
     }
 
-    void RendererVulkan::fence_wait(FenceHandle fence) {
-        DODO_ASSERT(!fence.is_null());
-        if (FenceInfo* fence_info = _fence_owner.get_or_null(fence)) {
-            static const auto default_timeout = std::numeric_limits<uint64_t>::max();
-            DODO_ASSERT_VK_RESULT(vkWaitForFences(_device, 1, &fence_info->vk_fence, VK_TRUE, default_timeout));
-            DODO_ASSERT_VK_RESULT(vkResetFences(_device, 1, &fence_info->vk_fence));
+    void RenderDeviceVulkan::fence_wait(FenceHandle p_fence) {
+        DODO_ASSERT(!p_fence.is_null());
+        Fence* fence = _fence_owner.get_or_null(p_fence);
+        if (!fence) {
+            return;
         }
+
+        static const auto default_timeout = std::numeric_limits<uint64_t>::max();
+        DODO_ASSERT_VK_RESULT(vkWaitForFences(_device, 1, &fence->vk_fence, VK_TRUE, default_timeout));
+        DODO_ASSERT_VK_RESULT(vkResetFences(_device, 1, &fence->vk_fence));
+        if (!fence->command_queue_to_signal || fence->command_queue_to_signal->image_semaphores_for_fences.empty()) {
+            return;
+        }
+
+        // After the fence has signaled, that the presentation engine is
+        // done, we have to free the used image semaphore associated
+        // with that fence.
+        CommandQueue* command_queue = fence->command_queue_to_signal;
+        uint32_t i = 0;
+        while (i < command_queue->image_semaphores_for_fences.size()) {
+            const std::pair<Fence*, uint32_t>& semaphore_for_fence = command_queue->image_semaphores_for_fences.at(i);
+            if (fence == semaphore_for_fence.first) {
+                command_queue->free_image_semaphores.push_back(semaphore_for_fence.second);
+                command_queue->image_semaphores_for_fences.erase(command_queue->image_semaphores_for_fences.begin() + i);
+            }
+            else {
+                i++;
+            }
+        }
+
+        fence->command_queue_to_signal = nullptr;
     }
 
-    void RendererVulkan::fence_destroy(FenceHandle fence) {
+    void RenderDeviceVulkan::fence_destroy(FenceHandle fence) {
         DODO_ASSERT(!fence.is_null());
-        if (FenceInfo* fence_info = _fence_owner.get_or_null(fence)) {
-            vkDestroyFence(_device, fence_info->vk_fence, VK_NULL_HANDLE);
+        if (VkFence* vk_fence = _fence_owner.get_or_null(fence)) {
+            vkDestroyFence(_device, vk_fence, VK_NULL_HANDLE);
             _fence_owner.destroy(fence);
         }
     }
 
-    SemaphoreHandle RendererVulkan::semaphore_create() {
+    SemaphoreHandle RenderDeviceVulkan::semaphore_create() {
         VkSemaphoreCreateInfo create_info = {};
         create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
         VkSemaphore vk_semaphore = VK_NULL_HANDLE;
         DODO_ASSERT_VK_RESULT(vkCreateSemaphore(_device, &create_info, VK_NULL_HANDLE, &vk_semaphore));
-
-        SemaphoreInfo semaphore_info = {};
-        semaphore_info.vk_semaphore = vk_semaphore;
-        return _semaphore_owner.create(semaphore_info);
+        return _semaphore_owner.create(vk_semaphore);
     }
 
-    void RendererVulkan::semaphore_destroy(SemaphoreHandle semaphore) {
+    void RenderDeviceVulkan::semaphore_destroy(SemaphoreHandle semaphore) {
         DODO_ASSERT(!semaphore.is_null());
-        if (SemaphoreInfo* semaphore_info = _semaphore_owner.get_or_null(semaphore)) {
-            vkDestroySemaphore(_device, semaphore_info->vk_semaphore, VK_NULL_HANDLE);
+        if (VkSemaphore* vk_semaphore = _semaphore_owner.get_or_null(semaphore)) {
+            vkDestroySemaphore(_device, vk_semaphore, VK_NULL_HANDLE);
             _semaphore_owner.destroy(semaphore);
         }
     }
 
-    SwapChainHandle RendererVulkan::swap_chain_create(SurfaceHandle surface) {
-        DODO_ASSERT(!surface.is_null());
-
-        const RenderContextVulkan::Functions& context_functions = _context->functions_get();
-        VkSurfaceKHR vk_surface = _context->surface_get_vk_surface(surface);
-        if (!vk_surface) {
+    SwapChainHandle RenderDeviceVulkan::swap_chain_create(SurfaceHandle p_surface) {
+        DODO_ASSERT(!p_surface.is_null());
+        const RenderBackendVulkan::Functions& backend_functions = _backend->functions_get();
+        RenderBackendVulkan::Surface* surface = _backend->surface_get(p_surface);
+        if (!surface) {
             return SwapChainHandle();
         }
 
         uint32_t format_count = 0;
-        DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceFormatsKHR(_physical_device, vk_surface, &format_count, nullptr));
+        DODO_ASSERT_VK_RESULT(backend_functions.GetPhysicalDeviceSurfaceFormatsKHR(_physical_device, surface->vk_surface, &format_count, nullptr));
         std::vector<VkSurfaceFormatKHR> formats(format_count);
-        DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceFormatsKHR(_physical_device, vk_surface, &format_count, formats.data()));
+        DODO_ASSERT_VK_RESULT(backend_functions.GetPhysicalDeviceSurfaceFormatsKHR(_physical_device, surface->vk_surface, &format_count, formats.data()));
 
         const VkFormat desired_format = VK_FORMAT_B8G8R8A8_SRGB;
         const VkColorSpaceKHR desired_color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
@@ -365,73 +386,91 @@ namespace Dodo {
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &color_attachment_ref;
-        VkRenderPassCreateInfo render_pass_create_info = {};
-        render_pass_create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        render_pass_create_info.attachmentCount = 1;
-        render_pass_create_info.pAttachments = &color_attachment;
-        render_pass_create_info.subpassCount = 1;
-        render_pass_create_info.pSubpasses = &subpass;
+        VkRenderPassCreateInfo create_info = {};
+        create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+        create_info.attachmentCount = 1;
+        create_info.pAttachments = &color_attachment;
+        create_info.subpassCount = 1;
+        create_info.pSubpasses = &subpass;
         VkRenderPass render_pass = VK_NULL_HANDLE;
-        DODO_ASSERT_VK_RESULT(vkCreateRenderPass(_device, &render_pass_create_info, nullptr, &render_pass));
+        DODO_ASSERT_VK_RESULT(vkCreateRenderPass(_device, &create_info, nullptr, &render_pass));
 
-        auto swap_chain_info = new SwapChainInfo();
-        swap_chain_info->surface = surface_handle;
-        swap_chain_info->vk_format = picked_format;
-        swap_chain_info->vk_color_space = picked_color_space;
-        swap_chain_info->vk_render_pass = render_pass;
-        return SwapChainHandle(swap_chain_info);
+        SwapChain swap_chain_info = {};
+        swap_chain_info.surface = p_surface;
+        swap_chain_info.format = picked_format;
+        swap_chain_info.color_space = picked_color_space;
+        swap_chain_info.render_pass = render_pass;
+        return _swap_chain_owner.create(swap_chain_info);
     }
 
-    FramebufferHandle RendererVulkan::swap_chain_acquire_next_framebuffer(CommandQueueHandle command_queue, SwapChainHandle swap_chain, SwapChainStatus& swap_chain_status) {
-        DODO_ASSERT(!command_queue.is_null());
-        DODO_ASSERT(!swap_chain.is_null());
-
-        auto swap_chain_info = swap_chain.cast_to<SwapChainInfo*>();
-        if ((swap_chain_info->vk_swap_chain == VK_NULL_HANDLE) && _context->surface_get_needs_resize(swap_chain_info->surface)) {
-            swap_chain_status = SWAP_CHAIN_STATUS_OUT_OF_DATE;
+    FramebufferHandle RenderDeviceVulkan::swap_chain_acquire_next_framebuffer(CommandQueueHandle p_command_queue, SwapChainHandle p_swap_chain, SwapChainStatus& r_swap_chain_status) {
+        DODO_ASSERT(!p_command_queue.is_null());
+        DODO_ASSERT(!p_swap_chain.is_null());
+        CommandQueue* command_queue = _command_queue_owner.get_or_null(p_command_queue);
+        SwapChain* swap_chain = _swap_chain_owner.get_or_null(p_swap_chain);
+        if (!command_queue || !swap_chain) {
+            r_swap_chain_status = SwapChainStatus::error;
             return FramebufferHandle();
         }
 
-        static const auto default_timeout = std::numeric_limits<uint64_t>::max();
-        auto command_queue_info = command_queue.cast_to<CommandQueueInfo*>();
-        if ()
+        if ((swap_chain_info->vk_swap_chain == VK_NULL_HANDLE) && _backend->surface_get_needs_resize(swap_chain_info->surface)) {
+            r_swap_chain_status = SwapChainStatus::out_of_date;
+            return FramebufferHandle();
+        }
 
-        const VkResult result = _functions.AcquireNextImageKHR(_device, swap_chain_info->vk_swap_chain, default_timeout, semaphore_info->vk_semaphore, VK_NULL_HANDLE, &swap_chain_info->image_index);
+        uint32_t semaphore_index = 0;
+        if (!command_queue->free_image_semaphores.empty()) {
+            semaphore_index = command_queue->free_image_semaphores.back();
+            command_queue->free_image_semaphores.pop_back();
+        }
+        else {
+            VkSemaphoreCreateInfo create_info = {};
+            create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+            VkSemaphore semaphore = VK_NULL_HANDLE;
+            DODO_ASSERT_VK_RESULT(vkCreateSemaphore(_device, &create_info, VK_NULL_HANDLE, semaphore));
+            semaphore_index = command_queue->image_semaphores.size();
+            command_queue->image_semaphores.push_back(semaphore);
+        }
+
+        static const auto default_timeout = std::numeric_limits<uint64_t>::max();
+        const VkResult result = _functions.AcquireNextImageKHR(_device, swap_chain->vk_swap_chain, default_timeout, command_queue->image_semaphores.at(semaphore_index), VK_NULL_HANDLE, &swap_chain->image_index);
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-            swap_chain_status = SWAP_CHAIN_STATUS_OUT_OF_DATE;
+            r_swap_chain_status = SwapChainStatus::out_of_date;
             return FramebufferHandle();
         }
 
         // Suboptimal swap chain can still be used to successfully present
         // to the surface.
-        swap_chain_status = SwapChainStatus::ok;
+        r_swap_chain_status = SwapChainStatus::success;
         if ((result != VK_SUCCESS) && (result != VK_SUBOPTIMAL_KHR)) {
-            swap_chain_status = SwapChainStatus::error;
+            r_swap_chain_status = SwapChainStatus::error;
             return FramebufferHandle();
         }
 
-        return FramebufferHandle(swap_chain_info->framebuffers.at(swap_chain_info->image_index));
+        command_queue->pending_semaphores_for_execute.push_back(semaphore_index);
+        return FramebufferHandle(swap_chain->framebuffers.at(swap_chain->image_index));
     }
 
-    void RendererVulkan::swap_chain_resize(CommandQueueHandle cmd_queue_handle, SwapChainHandle swap_chain_handle, uint32_t desired_framebuffer_count) {
-        DODO_ASSERT(cmd_queue_handle && swap_chain_handle);
-
-        auto command_queue = cmd_queue_handle.cast_to<CommandQueue*>();
-        auto swap_chain = swap_chain_handle.cast_to<SwapChain*>();
+    void RenderDeviceVulkan::swap_chain_resize(CommandQueueHandle p_command_queue, SwapChainHandle p_swap_chain, uint32_t p_desired_framebuffer_count) {
+        DODO_ASSERT(!p_swap_chain.is_null());
+        SwapChain* swap_chain = _swap_chain_owner.get_or_null(p_swap_chain);
+        if (!swap_chain) {
+            return;
+        }
 
         _swap_chain_release(swap_chain);
 
-        if (!_context->queue_family_supports_present(_physical_device, command_queue->queue_family_index, swap_chain->surface_handle)) {
+        if (!_backend->queue_family_supports_present(_physical_device, command_queue->queue_family_index, swap_chain->surface_handle)) {
             DODO_ASSERT(false);
             DODO_LOG_ERROR_TAG("Renderer", "Surface not supported by device!");
         }
 
-        const RenderContextVulkan::Functions& context_functions = _context->functions_get();
+        const RenderContextVulkan::Functions& context_functions = _backend->functions_get();
         auto surface = swap_chain->surface_handle.cast_to<RenderContextVulkan::Surface*>();
         VkSurfaceCapabilitiesKHR surface_caps = {};
         DODO_ASSERT_VK_RESULT(context_functions.GetPhysicalDeviceSurfaceCapabilitiesKHR(_physical_device, surface->surface_vk, &surface_caps));
 
-        uint32_t picked_image_count = std::max(desired_framebuffer_count, surface_caps.minImageCount + 1);
+        uint32_t picked_image_count = std::max(p_desired_framebuffer_count, surface_caps.minImageCount + 1);
         // A max image count of 0 means we can have any number of images.
         if (surface_caps.maxImageCount > 0) {
             picked_image_count = std::min(picked_image_count, surface_caps.maxImageCount);
@@ -514,43 +553,28 @@ namespace Dodo {
         }
     }
 
-    void RendererVulkan::swap_chain_destroy(SwapChainHandle swap_chain) {
-        DODO_ASSERT(!swap_chain.is_null());
-        auto swap_chain_info = swap_chain.cast_to<SwapChainInfo*>();
-        _swap_chain_release(swap_chain_info);
-        delete swap_chain_info;
-    }
-
-    void RendererVulkan::_swap_chain_release(SwapChainInfo* swap_chain_info) const {
-        for (size_t i = 0; i < swap_chain_info->framebuffers.size(); i++) {
-            vkDestroyFramebuffer(_device, swap_chain_info->framebuffers.at(i), nullptr);
-        }
-
-        swap_chain_info->framebuffers.clear();
-        for (size_t i = 0; i < swap_chain_info->image_views.size(); i++) {
-            vkDestroyImageView(_device, swap_chain_info->image_views.at(i), nullptr);
-        }
-
-        swap_chain_info->image_views.clear();
-
-        if (swap_chain_info->vk_swap_chain) {
-            _functions.DestroySwapchainKHR(_device, swap_chain_info->vk_swap_chain, nullptr);
+    void RenderDeviceVulkan::swap_chain_destroy(SwapChainHandle p_swap_chain) {
+        DODO_ASSERT(!p_swap_chain.is_null());
+        if (SwapChain* swap_chain = _swap_chain_owner.get_or_null(p_swap_chain)) {
+            _swap_chain_release(swap_chain);
         }
     }
 
-    Dodo::BufferHandle RendererVulkan::buffer_create(BufferUsage buffer_usage, size_t size, void* data /*= nullptr*/)
-    {
-        throw std::logic_error("The method or operation is not implemented.");
-    }
+    void RenderDeviceVulkan::_swap_chain_release(SwapChain* r_swap_chain) const {
+        for (size_t i = 0; i < r_swap_chain->framebuffers.size(); i++) {
+            vkDestroyFramebuffer(_device, r_swap_chain->framebuffers.at(i), nullptr);
+        }
 
-    void RendererVulkan::buffer_upload_data(BufferHandle buffer_handle, void* data, size_t size, size_t offset /*= 0*/)
-    {
-        throw std::logic_error("The method or operation is not implemented.");
-    }
+        r_swap_chain->framebuffers.clear();
+        for (size_t i = 0; i < r_swap_chain->image_views.size(); i++) {
+            vkDestroyImageView(_device, r_swap_chain->image_views.at(i), nullptr);
+        }
 
-    void RendererVulkan::buffer_destroy(BufferHandle buffer_handle)
-    {
-        throw std::logic_error("The method or operation is not implemented.");
+        r_swap_chain->image_views.clear();
+
+        if (r_swap_chain->vk_swap_chain) {
+            _functions.DestroySwapchainKHR(_device, r_swap_chain->vk_swap_chain, nullptr);
+        }
     }
 
 }

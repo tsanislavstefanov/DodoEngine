@@ -3,19 +3,18 @@
 #ifdef DODO_VULKAN
 
 #include "vulkan_utils.h"
-#include "renderer/renderer.h"
-#include "renderer/render_handle_owner.h"
+#include "renderer/render_device.h"
 
 namespace Dodo {
 
-    class RenderContextVulkan;
+    class RenderBackendVulkan;
 
-    class RendererVulkan : public Renderer
+    class RenderDeviceVulkan : public RenderDevice
     {
     public:
-        RendererVulkan(Ref<RenderContextVulkan> context);
+        RenderDeviceVulkan(Ref<RenderBackendVulkan> p_backend);
 
-        void initialize(size_t device_index) override;
+        void initialize(size_t index) override;
 
     private:
         struct Functions {
@@ -30,7 +29,7 @@ namespace Dodo {
         void _initialize_device(std::vector<VkDeviceQueueCreateInfo>& queue_create_infos);
         void _request_extension(const std::string& name, bool is_required);
 
-        Ref<RenderContextVulkan> _context = nullptr;
+        Ref<RenderBackendVulkan> _backend = nullptr;
         VkPhysicalDevice _physical_device = nullptr;
         std::vector<VkQueueFamilyProperties> _queue_families = {};
         std::map<std::string, bool> _requested_extensions = {};
@@ -40,95 +39,92 @@ namespace Dodo {
         Functions _functions = {};
 
     public:
+        // ---- COMMAND QUEUE ----
         CommandQueueFamilyHandle command_queue_family_get(CommandQueueFamilyType command_queue_family_type, SurfaceHandle surface) override;
         CommandQueueHandle command_queue_create(CommandQueueFamilyHandle command_queue_family) override;
+        bool command_queue_execute_and_present(CommandQueueHandle p_command_queue, const std::vector<SemaphoreHandle>& p_wait_semaphores, const std::vector<CommandBufferHandle>& p_command_buffers, const std::vector<SemaphoreHandle>& p_signal_semaphores, FenceHandle p_fence, SwapChainHandle p_swap_chain) override;
         void command_queue_destroy(CommandQueueHandle command_queue) override;
 
     private:
-        struct CommandQueueInfo {
+        struct Fence;
+        struct CommandQueue {
             uint32_t queue_family_index = 0;
             uint32_t queue_index = 0;
+            std::vector<uint32_t> free_image_semaphores = {};
+            std::vector<VkSemaphore> image_semaphores = {};
+            std::vector<uint32_t> pending_semaphores_for_execute = {};
+            std::vector<std::pair<Fence*, uint32_t>> image_semaphores_for_fences = {};
         };
 
-        RenderHandleOwner<CommandQueueHandle, CommandQueueInfo> _command_queue_owner = {};
+        RenderHandleOwner<CommandQueueHandle, CommandQueue> _command_queue_owner = {};
 
     public:
+        // ---- COMMAND POOL ----
         CommandPoolHandle command_pool_create(CommandQueueFamilyHandle command_queue_family) override;
         void command_pool_destroy(CommandPoolHandle command_pool) override;
 
     private:
-        struct CommandPoolInfo {
-            VkCommandPool vk_command_pool = VK_NULL_HANDLE;
-        };
-
-        RenderHandleOwner<CommandPoolHandle, CommandPoolInfo> _command_pool_owner = {};
+        RenderHandleOwner<CommandPoolHandle, VkCommandPool> _command_pool_owner = {};
 
     public:
+        // ---- COMMAND BUFFER ----
         CommandBufferHandle command_buffer_create(CommandPoolHandle command_pool, CommandBufferType command_buffer_type) override;
         void command_buffer_begin(CommandBufferHandle command_buffer) override;
         void command_buffer_end(CommandBufferHandle command_buffer) override;
 
     private:
-        struct CommandBufferInfo {
-            CommandBufferType command_buffer_type = COMMAND_BUFFER_TYPE_PRIMARY;
+        struct CommandBuffer {
+            CommandBufferType command_buffer_type = CommandBufferType::primary;
             VkCommandBuffer vk_command_buffer = VK_NULL_HANDLE;
         };
 
-        RenderHandleOwner<CommandBufferHandle, CommandBufferInfo> _command_buffer_owner = {};
+        RenderHandleOwner<CommandBufferHandle, CommandBuffer> _command_buffer_owner = {};
 
     public:
+        // ---- FENCE ----
         FenceHandle fence_create() override;
         void fence_wait(FenceHandle fence) override;
         void fence_destroy(FenceHandle fence) override;
 
     private:
-        struct FenceInfo {
+        struct Fence {
             VkFence vk_fence = VK_NULL_HANDLE;
+            CommandQueue* command_queue_to_signal = nullptr;
         };
 
-        RenderHandleOwner<FenceHandle, FenceInfo> _fence_owner = {};
+        RenderHandleOwner<FenceHandle, Fence> _fence_owner = {};
 
     public:
+        // ---- SEMAPHORE ----
         SemaphoreHandle semaphore_create() override;
         void semaphore_destroy(SemaphoreHandle semaphore) override;
 
     private:
-        struct SemaphoreInfo {
-            VkSemaphore vk_semaphore = VK_NULL_HANDLE;
-        };
-
-        RenderHandleOwner<SemaphoreHandle, SemaphoreInfo> _semaphore_owner = {};
+        RenderHandleOwner<SemaphoreHandle, VkSemaphore> _semaphore_owner = {};
 
     public:
-        SwapChainHandle swap_chain_create(SurfaceHandle surface) override;
-        FramebufferHandle swap_chain_acquire_next_framebuffer(CommandQueueHandle command_queue, SwapChainHandle swap_chain, SwapChainStatus& swap_chain_status) override;
-        void swap_chain_resize(CommandQueueHandle command_queue, SwapChainHandle swap_chain, uint32_t desired_framebuffer_count = 3) override;
-        void swap_chain_destroy(SwapChainHandle swap_chain) override;
+        // ---- SWAP CHAIN ----
+        SwapChainHandle swap_chain_create(SurfaceHandle p_surface) override;
+        FramebufferHandle swap_chain_acquire_next_framebuffer(CommandQueueHandle p_command_queue, SwapChainHandle p_swap_chain, SwapChainStatus& r_swap_chain_status) override;
+        void swap_chain_resize(CommandQueueHandle p_command_queue, SwapChainHandle p_swap_chain, uint32_t p_desired_framebuffer_count = 3) override;
+        void swap_chain_destroy(SwapChainHandle p_swap_chain) override;
 
     private:
-        struct SwapChainInfo {
+        struct SwapChain {
             SurfaceHandle surface = {};
-            VkFormat vk_format = VK_FORMAT_UNDEFINED;
-            VkColorSpaceKHR vk_color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-            VkRenderPass vk_render_pass = nullptr;
+            VkFormat format = VK_FORMAT_UNDEFINED;
+            VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+            VkRenderPass render_pass = nullptr;
             VkSwapchainKHR vk_swap_chain = nullptr;
-            std::vector<VkImage> vk_images = {};
-            std::vector<VkImageView> vk_image_views = {};
+            std::vector<VkImage> images = {};
+            std::vector<VkImageView> image_views = {};
             std::vector<VkFramebuffer> framebuffers = {};
             uint32_t image_index = 0;
         };
 
-        void _swap_chain_release(SwapChainInfo* swap_chain_info) const;
-        FramebufferHandle _framebuffer_create();
+        void _swap_chain_release(SwapChain* r_swap_chain) const;
 
-        RenderHandleOwner<SwapChainHandle, SwapChainInfo> _swap_chain_owner = {};
-
-    public:
-        BufferHandle buffer_create(BufferUsage buffer_usage, size_t size, void* data = nullptr) override;
-        void buffer_upload_data(BufferHandle buffer_handle, void* data, size_t size, size_t offset = 0) override;
-        void buffer_destroy(BufferHandle buffer_handle) override;
-
-    private:
+        RenderHandleOwner<SwapChainHandle, SwapChain> _swap_chain_owner = {};
     };
 
 }

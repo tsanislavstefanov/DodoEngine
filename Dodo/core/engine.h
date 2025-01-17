@@ -1,7 +1,7 @@
 #pragma once
 
 #include "display.h"
-#include "renderer/renderer.h"
+#include "renderer/render_device.h"
 #include "renderer/render_context.h"
 
 namespace Dodo {
@@ -35,7 +35,7 @@ namespace Dodo {
         Ref<Display> _display = nullptr;
         Display::WindowId _main_window_id = 0;
         Ref<RenderContext> _context = nullptr;
-        Ref<Renderer> _renderer = nullptr;
+        Ref<RenderDevice> _device = nullptr;
         SurfaceHandle _main_surface = SurfaceHandle::null();
         CommandQueueFamilyHandle _main_queue_family = CommandQueueFamilyHandle::null();
         CommandQueueHandle _main_queue = CommandQueueHandle::null();
