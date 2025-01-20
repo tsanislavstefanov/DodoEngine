@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <limits>
 #include <vector>
 
 namespace Dodo {
@@ -9,38 +8,36 @@ namespace Dodo {
     template<typename Handle, typename T>
     class RenderHandleOwner {
     public:
-        Handle create(const T& value) {
-            uint32_t index = _size;
+        Handle create(T&& p_data) {
+            uint32_t index = 0;
             if (!_free_list.empty()) {
                 index = _free_list.back();
                 _free_list.pop_back();
             }
-
-            if (_size <= index) {
-                _size++;
-                _generations.resize(_size + 1);
-                _data.resize(_size + 1);
+            else {
+                index = _size++;
+                if (_size > _generations.size()) {
+                    _resize(static_cast<size_t>(_size * 1.5f));
+                }
             }
 
-            _data.at(index) = std::move(value);
+            _data.at(index) = std::move(p_data);
             const uint32_t generation = _generations.at(index);
-            return (static_cast<uint64_t>(generation) << 32) | index;
+            return Handle((static_cast<uint64_t>(generation) << 32) | static_cast<uint64_t>(index + 1));
         }
 
-        T* get_or_null(Handle handle) const {
-            const auto generation = static_cast<uint32_t>(handle.get_id() >> 32);
-            const auto index = static_cast<uint32_t>(handle.get_id() & std::numeric_limits<uint32_t>::max());
-            if ((_size <= index) || (generation != _generations.at(index)))  {
+        T* get_or_null(Handle p_handle) const {
+            auto [index, generation] = _unpack(p_handle);
+            if (!_is_valid(index, generation)) {
                 return nullptr;
             }
 
             return &_data.at(index);
         }
 
-        void destroy(Handle handle) {
-            const auto generation = static_cast<uint32_t>(handle.get_id() >> 32);
-            const auto index = static_cast<uint32_t>(handle.get_id() & std::numeric_limits<uint32_t>::max());
-            if ((_size <= index) || (generation != _generations.at(index)))  {
+        void destroy(Handle p_handle) {
+            auto [index, generation] = _unpack(p_handle);
+            if (!_is_valid(index, generation))  {
                 return;
             }
 
@@ -49,10 +46,32 @@ namespace Dodo {
             _free_list.push_back(index);
         }
 
+        void clear() {
+            _generations.clear();
+            _data.clear();
+            _size = 0;
+            _free_list.clear();
+        }
+
     private:
+        void _resize(size_t p_new_size) {
+            _generations.resize(p_new_size);
+            _data.resize(p_new_size);
+        }
+
+        std::pair<uint32_t, uint32_t> _unpack(Handle p_handle) const {
+            const auto index = static_cast<uint32_t>(p_handle.get_id() & UINT32_MAX);
+            const auto generation = static_cast<uint32_t>(p_handle.get_id() >> 32);
+            return std::pair<uint32_t, uint32_t>(index - 1, generation);
+        }
+
+        bool _is_valid(uint32_t p_index, uint32_t p_generation) const {
+            return (_size > p_index) && (_generations.at(p_index) == p_generation);
+        }
+
         std::vector<uint32_t> _generations = {};
         std::vector<T> _data = {};
-        uint32_t _size = 0;
+        size_t _size = 0;
         std::vector<uint32_t> _free_list = {};
     };
 

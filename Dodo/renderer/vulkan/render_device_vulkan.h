@@ -25,6 +25,13 @@ namespace Dodo {
             PFN_vkDestroySwapchainKHR DestroySwapchainKHR = nullptr;
         };
 
+        struct Queue {
+            uint32_t family_index = 0;
+            uint32_t queue_index = 0;
+            VkQueue queue = VK_NULL_HANDLE;
+            uint32_t virtual_count = 0;
+        };
+
         void _add_queue_create_infos(std::vector<VkDeviceQueueCreateInfo>& queue_create_infos);
         void _initialize_device(std::vector<VkDeviceQueueCreateInfo>& queue_create_infos);
         void _request_extension(const std::string& name, bool is_required);
@@ -35,7 +42,7 @@ namespace Dodo {
         std::map<std::string, bool> _requested_extensions = {};
         std::vector<const char*> _enabled_extensions = {};
         VkDevice _device = nullptr;
-        std::vector<std::vector<VkQueue>> _queues = {};
+        std::vector<std::vector<Queue>> _queues = {};
         Functions _functions = {};
 
     public:
@@ -50,10 +57,13 @@ namespace Dodo {
         struct CommandQueue {
             uint32_t queue_family_index = 0;
             uint32_t queue_index = 0;
-            std::vector<uint32_t> free_image_semaphores = {};
             std::vector<VkSemaphore> image_semaphores = {};
-            std::vector<uint32_t> pending_semaphores_for_execute = {};
+            std::vector<uint32_t> free_image_semaphores = {};
+            std::vector<uint32_t> pending_image_semaphores = {};
+            std::vector<uint32_t> pending_image_semaphores_for_fences = {};
             std::vector<std::pair<Fence*, uint32_t>> image_semaphores_for_fences = {};
+            std::vector<VkSemaphore> present_semaphores = {};
+            uint32_t present_semaphore_index = 0;
         };
 
         RenderHandleOwner<CommandQueueHandle, CommandQueue> _command_queue_owner = {};
@@ -115,6 +125,7 @@ namespace Dodo {
             VkFormat format = VK_FORMAT_UNDEFINED;
             VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
             VkRenderPass render_pass = nullptr;
+            uint32_t framebuffer_count = 0;
             VkSwapchainKHR vk_swap_chain = nullptr;
             std::vector<VkImage> images = {};
             std::vector<VkImageView> image_views = {};
