@@ -21,6 +21,7 @@ namespace Dodo {
         const void* window_get_platform_data(WindowId window) const override;
         void window_set_event_callback(WindowId window, const std::function<void(Event&)>& callback) override;
         void window_process_events(WindowId window) override;
+        void window_destroy(WindowId window) override;
         uint32_t render_backend_get_count() const override;
         Ref<RenderBackend> render_backend_get(size_t index) const override;
 

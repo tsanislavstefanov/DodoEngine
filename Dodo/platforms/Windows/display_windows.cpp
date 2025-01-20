@@ -103,6 +103,11 @@ namespace Dodo {
         }
     }
 
+    void DisplayWindows::window_destroy(WindowId window)
+    {
+        throw std::logic_error("The method or operation is not implemented.");
+    }
+
     const void* DisplayWindows::window_get_platform_data(WindowId window_id) const {
         if (!_window_data.contains(window_id)) {
             return nullptr;

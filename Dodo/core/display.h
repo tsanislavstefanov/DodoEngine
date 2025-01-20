@@ -10,15 +10,15 @@ namespace Dodo {
         static constexpr WindowId invalid_window = UINT64_MAX;
 
         struct WindowSpecifications {
-            uint32_t width{0};
-            uint32_t height{0};
-            std::string title{};
+            uint32_t width = 0;
+            uint32_t height = 0;
+            std::string title = "";
         };
 
         struct Event {
             struct WindowResize {
-                uint32_t width{0};
-                uint32_t height{0};
+                uint32_t width = 0;
+                uint32_t height = 0;
             };
 
             enum class Type {
@@ -27,10 +27,10 @@ namespace Dodo {
                 unknown
             };
 
-            WindowId window{invalid_window};
-            Type type{Type::unknown};
+            WindowId window = invalid_window;
+            Type type = Type::unknown;
             union {
-                WindowResize resized{};
+                WindowResize resized = {0, 0};
             };
         };
 

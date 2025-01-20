@@ -4,7 +4,6 @@
 
 #include "vulkan_utils.h"
 #include "renderer/render_backend.h"
-#include "renderer/render_handle_owner.h"
 
 namespace Dodo {
 
@@ -57,7 +56,7 @@ namespace Dodo {
     protected:
         virtual const char* _get_platform_surface_extension() const = 0;
 
-        RenderHandleOwner<SurfaceHandle, Surface> _surface_owner = {};
+        RenderHandlePool<SurfaceHandle, Surface> _surface_owner = {};
         std::map<Display::WindowId, SurfaceHandle> _surfaces = {};
 
     private:

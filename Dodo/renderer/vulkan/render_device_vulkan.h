@@ -26,7 +26,7 @@ namespace Dodo {
         };
 
         struct Queue {
-            uint32_t family_index = 0;
+            uint32_t queue_family_index = 0;
             uint32_t queue_index = 0;
             VkQueue queue = VK_NULL_HANDLE;
             uint32_t virtual_count = 0;
@@ -47,10 +47,10 @@ namespace Dodo {
 
     public:
         // ---- COMMAND QUEUE ----
-        CommandQueueFamilyHandle command_queue_family_get(CommandQueueFamilyType p_command_queue_family_type, SurfaceHandle p_surface) override;
-        CommandQueueHandle command_queue_create(CommandQueueFamilyHandle p_command_queue_family) override;
+        CommandQueueFamilyHandle command_queue_family_get(CommandQueueFamilyType command_queue_family_type, SurfaceHandle surface) override;
+        CommandQueueHandle command_queue_create(CommandQueueFamilyHandle command_queue_family) override;
         bool command_queue_execute_and_present(CommandQueueHandle p_command_queue, const std::vector<SemaphoreHandle>& p_wait_semaphores, const std::vector<CommandBufferHandle>& p_command_buffers, const std::vector<SemaphoreHandle>& p_signal_semaphores, FenceHandle p_fence, SwapChainHandle p_swap_chain) override;
-        void command_queue_destroy(CommandQueueHandle p_command_queue) override;
+        void command_queue_destroy(CommandQueueHandle command_queue) override;
 
     private:
         struct Fence;
@@ -66,7 +66,7 @@ namespace Dodo {
             uint32_t present_semaphore_index = 0;
         };
 
-        RenderHandleOwner<CommandQueueHandle, CommandQueue> _command_queue_owner = {};
+        RenderHandlePool<CommandQueueHandle, CommandQueue> _command_queue_pool = {};
 
     public:
         // ---- COMMAND POOL ----
@@ -74,7 +74,7 @@ namespace Dodo {
         void command_pool_destroy(CommandPoolHandle command_pool) override;
 
     private:
-        RenderHandleOwner<CommandPoolHandle, VkCommandPool> _command_pool_owner = {};
+        RenderHandlePool<CommandPoolHandle, VkCommandPool> _command_pool_owner = {};
 
     public:
         // ---- COMMAND BUFFER ----
@@ -88,7 +88,7 @@ namespace Dodo {
             VkCommandBuffer vk_command_buffer = VK_NULL_HANDLE;
         };
 
-        RenderHandleOwner<CommandBufferHandle, CommandBuffer> _command_buffer_owner = {};
+        RenderHandlePool<CommandBufferHandle, CommandBuffer> _command_buffer_pool = {};
 
     public:
         // ---- FENCE ----
@@ -102,7 +102,7 @@ namespace Dodo {
             CommandQueue* command_queue_to_signal = nullptr;
         };
 
-        RenderHandleOwner<FenceHandle, Fence> _fence_owner = {};
+        RenderHandlePool<FenceHandle, Fence> _fence_owner = {};
 
     public:
         // ---- SEMAPHORE ----
@@ -110,7 +110,7 @@ namespace Dodo {
         void semaphore_destroy(SemaphoreHandle semaphore) override;
 
     private:
-        RenderHandleOwner<SemaphoreHandle, VkSemaphore> _semaphore_owner = {};
+        RenderHandlePool<SemaphoreHandle, VkSemaphore> _semaphore_owner = {};
 
     public:
         // ---- SWAP CHAIN ----
@@ -135,7 +135,7 @@ namespace Dodo {
 
         void _swap_chain_release(SwapChain* r_swap_chain) const;
 
-        RenderHandleOwner<SwapChainHandle, SwapChain> _swap_chain_owner = {};
+        RenderHandlePool<SwapChainHandle, SwapChain> _swap_chain_owner = {};
     };
 
 }
