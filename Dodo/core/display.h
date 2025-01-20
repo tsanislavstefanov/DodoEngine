@@ -1,56 +1,51 @@
 #pragma once
 
-#include "core/func.h"
-
 namespace Dodo {
 
-    class RenderContext;
+    class RenderBackend;
 
-    class Display : public RefCounted {
+    class Display {
     public:
-        static Ref<Display> create();
-
-        Display() = default;
-        virtual ~Display() = default;
-
         using WindowId = int64_t;
-        static constexpr WindowId invalid_window = static_cast<WindowId>(-1);
+        static constexpr WindowId invalid_window = UINT64_MAX;
 
         struct WindowSpecifications {
-            uint32_t width = 0;
-            uint32_t height = 0;
-            std::string title = {};
+            uint32_t width{0};
+            uint32_t height{0};
+            std::string title{};
         };
 
         struct Event {
-            struct WindowResizeEvent {
-                uint32_t width = 0;
-                uint32_t height = 0;
+            struct WindowResize {
+                uint32_t width{0};
+                uint32_t height{0};
             };
 
             enum class Type {
                 window_close,
                 window_resize,
-                none
+                unknown
             };
 
-            WindowId window = invalid_window;
-            Type type = Type::none;
-
+            WindowId window{invalid_window};
+            Type type{Type::unknown};
             union {
-                WindowResizeEvent resized = {};
+                WindowResize resized{};
             };
         };
 
-        virtual WindowId window_create(const WindowSpecifications& window_specs) = 0;
-        virtual void window_show_and_focus(WindowId window) = 0;
-        virtual void window_focus(WindowId window) = 0;
-        virtual void window_set_event_callback(WindowId window, Func<void(Event&)>&& callback) = 0;
-        virtual void window_process_events(WindowId window) = 0;
-        virtual const void* window_get_platform_data(WindowId window) const = 0;
+        static Display& singleton_get();
 
-        virtual uint32_t context_get_count() const = 0;
-        virtual Ref<RenderContext> context_get(size_t index) const = 0;
+        Display() = default;
+        virtual ~Display() = default;
+
+        virtual WindowId window_create(const WindowSpecifications& window_specs) = 0;
+        virtual const void* window_get_platform_data(WindowId window) const = 0;
+        virtual void window_set_event_callback(WindowId window, const std::function<void(Event&)>& callback) = 0;
+        virtual void window_process_events(WindowId window) = 0;
+        virtual void window_destroy(WindowId window) = 0;
+        virtual uint32_t render_backend_get_count() const = 0;
+        virtual Ref<RenderBackend> render_backend_get(size_t index) const = 0;
     };
 
 }

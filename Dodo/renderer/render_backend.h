@@ -12,9 +12,8 @@ namespace Dodo {
     class RenderBackend : public RefCounted {
     public:
         enum class Type {
-#ifdef DODO_VULKAN
             vulkan,
-#endif
+            dx12
         };
 
         enum class VSyncMode {

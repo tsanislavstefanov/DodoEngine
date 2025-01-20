@@ -43,10 +43,6 @@
 #   endif
 #endif
 
-////////////////////////////////////////////////////////////////
-// ASSERTION ///////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-
 #ifdef DODO_ENABLE_ASSERT
 #   ifndef DODO_ASSERT
 #       define DODO_ASSERT(CONDITION) if (!(CONDITION)) { DODO_DEBUG_BREAK(); }
@@ -57,12 +53,12 @@
 #   endif
 #endif
 
-constexpr size_t operator"" _mb(size_t mb) {
-    // 1 MB = 1024 * 1024 bytes.
-    return mb * 1024 * 1024;
+#include <cstddef>
+
+constexpr size_t operator"" _kb(size_t p_bytes) {
+    return p_bytes * 1024;
 }
 
-constexpr size_t operator"" _kb(size_t kb) {
-    // 1 KB = 1024 bytes.
-    return kb * 1024;
+constexpr size_t operator"" _mb(size_t p_bytes) {
+    return p_bytes * 1024 * 1024;
 }

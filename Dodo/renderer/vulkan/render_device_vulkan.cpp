@@ -43,7 +43,7 @@ namespace Dodo {
         _initialize_device(queue_create_infos);
     }
 
-    void RenderDeviceVulkan::_add_queue_create_infos(std::vector<VkDeviceQueueCreateInfo>& queue_create_infos) {
+    void RenderDeviceVulkan::_add_queue_create_infos(std::vector<VkDeviceQueueCreateInfo>& r_queue_create_infos) {
         _queues.clear();
         const size_t queue_family_count = _queue_families.size();
         _queues.resize(queue_family_count);
@@ -62,10 +62,10 @@ namespace Dodo {
             create_info.queueFamilyIndex = i;
             create_info.queueCount = queue_count;
             create_info.pQueuePriorities = &queue_priority;
-            queue_create_infos.push_back(std::move(create_info));
+            r_queue_create_infos.push_back(std::move(create_info));
 
             _queues.at(i).resize(queue_count);
-            for (uint32_t j = 0; j < queues.at(i).size(); i++) {
+            for (uint32_t j = 0; j < _queues.at(i).size(); i++) {
                 Queue& queue = _queues.at(i).at(j);
                 queue.family_index = i;
                 queue.queue_index = j;
@@ -161,13 +161,23 @@ namespace Dodo {
 
     CommandQueueHandle RenderDeviceVulkan::command_queue_create(CommandQueueFamilyHandle p_command_queue_family) {
         DODO_ASSERT(!p_command_queue_family.is_null());
+        const uint32_t queue_family_index = p_command_queue_family.get_id() - 1;
 
-        uint32_t queue_index = UINT32_MAX;
+        std::vector<Queue>& queues = _queues.at(queue_family_index);
+        uint32_t picked_queue_index = UINT32_MAX;
+        uint32_t picked_virtual_count = UINT32_MAX;
+        for (uint32_t i = 0; i < queues.size(); i++) {
+            if (queues.at(i).virtual_count < picked_virtual_count) {
+                picked_queue_index = i;
+                picked_virtual_count = queues.at(i).virtual_count;
+            }
+        }
 
+        queues.at(picked_queue_index).virtual_count++;
 
         CommandQueue command_queue = {};
-        command_queue.queue_family_index = p_command_queue_family.get_id() - 1;
-        // TODO: Select a queue with min virtual count!
+        command_queue.queue_family_index = queue_family_index;
+        command_queue.queue_index = picked_queue_index;
         return _command_queue_owner.create(std::move(command_queue));
     }
 
@@ -266,9 +276,12 @@ namespace Dodo {
         return true;
     }
 
-    void RenderDeviceVulkan::command_queue_destroy(CommandQueueHandle command_queue) {
-        DODO_ASSERT(!command_queue.is_null());
-        _command_queue_owner.destroy(command_queue);
+    void RenderDeviceVulkan::command_queue_destroy(CommandQueueHandle p_command_queue) {
+        DODO_ASSERT(!p_command_queue.is_null());
+        if (CommandQueue* command_queue = _command_queue_owner.get_or_null(p_command_queue)) {
+            _queues.at(command_queue->queue_family_index).at(command_queue->queue_index).virtual_count--;
+            _command_queue_owner.destroy(p_command_queue);
+        }
     }
 
     CommandPoolHandle RenderDeviceVulkan::command_pool_create(CommandQueueFamilyHandle command_queue_family) {

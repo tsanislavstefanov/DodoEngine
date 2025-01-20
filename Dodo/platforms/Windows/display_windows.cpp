@@ -4,14 +4,14 @@
 
 #include "display_windows.h"
 #ifdef DODO_VULKAN
-#   include "render_context_vulkan_windows.h"
+#   include "render_backend_vulkan_windows.h"
 #endif
 
 namespace Dodo {
 
     DisplayWindows::DisplayWindows() {
 #ifdef DODO_VULKAN
-        auto context_vk = Ref<RenderContextVulkanWindows>::create();
+        auto context_vk = Ref<RenderBackendVulkanWindows>::create();
         _contexts.push_back(context_vk);
 #endif
     }

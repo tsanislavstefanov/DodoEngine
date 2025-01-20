@@ -47,10 +47,10 @@ namespace Dodo {
 
     public:
         // ---- COMMAND QUEUE ----
-        CommandQueueFamilyHandle command_queue_family_get(CommandQueueFamilyType command_queue_family_type, SurfaceHandle surface) override;
-        CommandQueueHandle command_queue_create(CommandQueueFamilyHandle command_queue_family) override;
+        CommandQueueFamilyHandle command_queue_family_get(CommandQueueFamilyType p_command_queue_family_type, SurfaceHandle p_surface) override;
+        CommandQueueHandle command_queue_create(CommandQueueFamilyHandle p_command_queue_family) override;
         bool command_queue_execute_and_present(CommandQueueHandle p_command_queue, const std::vector<SemaphoreHandle>& p_wait_semaphores, const std::vector<CommandBufferHandle>& p_command_buffers, const std::vector<SemaphoreHandle>& p_signal_semaphores, FenceHandle p_fence, SwapChainHandle p_swap_chain) override;
-        void command_queue_destroy(CommandQueueHandle command_queue) override;
+        void command_queue_destroy(CommandQueueHandle p_command_queue) override;
 
     private:
         struct Fence;
