@@ -123,7 +123,7 @@ namespace Dodo {
         if (command_queue_family_type == CommandQueueFamilyType::compute) {
             desired_queue_family_bits = VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
         }
-        else if (command_queue_family_type == CommandQueueFamilyType::transfer) {
+        else if (command_queue_family_type == CommandQueueFamilyType::copy) {
             desired_queue_family_bits = VK_QUEUE_TRANSFER_BIT;
         }
 
@@ -154,57 +154,127 @@ namespace Dodo {
 
         std::vector<Queue>& queues = _queues.at(queue_family_index);
         uint32_t picked_queue_index = UINT32_MAX;
-        uint32_t picked_virtual_count = UINT32_MAX;
+        uint32_t picked_use_count = UINT32_MAX;
         for (uint32_t i = 0; i < queues.size(); i++) {
             const Queue& queue = queues.at(i);
-            if (queue.virtual_count < picked_virtual_count) {
+            if (queue.use_count < picked_use_count) {
                 picked_queue_index = i;
-                picked_virtual_count = queue.virtual_count;
+                picked_use_count = queue.use_count;
             }
         }
 
-        queues.at(picked_queue_index).virtual_count++;
+        queues.at(picked_queue_index).use_count++;
 
-        CommandQueue command_queue = {};
-        command_queue.queue_family_index = queue_family_index;
-        command_queue.queue_index = picked_queue_index;
-        return _command_queues.create(std::move(command_queue));
+        CommandQueue cmd_queue = {};
+        cmd_queue.queue_family_index = queue_family_index;
+        cmd_queue.queue_index = picked_queue_index;
+        cmd_queue.queue = queues.at(cmd_queue.queue_index).queue;
+        return _command_queues.create(std::move(cmd_queue));
     }
 
-    bool RenderDeviceVulkan::command_queue_execute_and_present(CommandQueueHandle command_queue, const std::vector<SemaphoreHandle>& p_wait_semaphores, const std::vector<CommandBufferHandle>& command_buffers, const std::vector<SemaphoreHandle>& p_signal_semaphores, FenceHandle p_fence, SwapChainHandle p_swap_chain) {
-        DODO_ASSERT(command_queue);
-        CommandQueue* cmd_queue = _command_queues.get_or_null(command_queue);
-        if (cmd_queue) {
-            return false;
-        }
+    void RenderDeviceVulkan::command_queue_execute_and_present(const SubmitSpecifications& submit_specs) {
+        DODO_ASSERT(submit_specs.command_queue);
+        if (CommandQueue* cmd_queue = _command_queues.get_or_null(submit_specs.command_queue)) {
+            std::vector<VkSemaphore> vk_wait_semaphores = {};
+            std::vector<VkPipelineStageFlags> vk_wait_stages = {};
+            std::vector<VkCommandBuffer> vk_command_buffers = {};
+            std::vector<VkSemaphore> vk_signal_semaphores = {};
+            VkQueue vk_queue = _queues.at(cmd_queue->queue_family_index).at(cmd_queue->queue_index);
 
-        Queue& queue = _queues.at(cmd_queue->queue_family_index).at(cmd_queue->queue_index);
-        Fence* fence = _fence_owner.get_or_null(p_fence);
-        SwapChain* swap_chain = _swap_chain_owner.get_or_null(p_swap_chain);
+            if (!cmd_queue->pending_image_semaphores.empty()) {
+                for (uint32_t i = 0; i < cmd_queue->pending_image_semaphores.size(); i++) {
+                    const uint32_t semaphore_index = cmd_queue->pending_image_semaphores.at(i);
+                    VkSemaphore wait_semaphore = cmd_queue->image_semaphores.at(semaphore_index);
+                    vk_wait_semaphores.push_back(wait_semaphore);
+                    const VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                    vk_wait_stages.push_back(wait_stage);
+                }
 
-        std::vector<VkSemaphore> wait_semaphores = {};
-        std::vector<VkPipelineStageFlags> wait_stages = {};
-        std::vector<VkCommandBuffer> vk_cmd_buffers = {};
-        std::vector<VkSemaphore> signal_semaphores = {};
-
-        if (!cmd_queue->pending_image_semaphores.empty()) {
-            for (uint32_t i = 0; i < cmd_queue->pending_image_semaphores.size(); i++) {
-                const uint32_t semaphore_index = cmd_queue->pending_image_semaphores.at(i);
-                VkSemaphore wait_semaphore = cmd_queue->image_semaphores.at(semaphore_index);
-                wait_semaphores.push_back(wait_semaphore);
-                wait_stages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+                cmd_queue->pending_image_semaphores.clear();
             }
 
-            cmd_queue->pending_image_semaphores.clear();
-        }
+            if (!cmd_queue->pending_command_semaphores.empty()) {
+                for (uint32_t i = 0; i < cmd_queue->pending_command_semaphores.size(); i++) {
+                    const uint32_t semaphore_index = cmd_queue->pending_command_semaphores.at(i);
+                    VkSemaphore wait_semaphore = cmd_queue->command_semaphores.at(semaphore_index);
+                    vk_wait_semaphores.push_back(wait_semaphore);
+                    const VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+                    vk_wait_stages.push_back(wait_stage);
+                }
 
-        for (uint32_t i = 0; i < command_buffers.size(); i++) {
-            if (CommandBuffer* cmd_buffer = _command_buffer_pool.get_or_null(command_buffers.at(i))) {
-                vk_cmd_buffers.push_back(cmd_buffer->vk_command_buffer);
+                cmd_queue->pending_command_semaphores.clear();
+            }
+
+            if (!submit_specs.command_buffers.empty()) {
+                for (uint32_t i = 0; i < submit_specs.command_buffers.size(); i++) {
+                    if (CommandBuffer* command_buffer = _command_buffers.get_or_null(submit_specs.command_buffers.at(i))) {
+                        vk_command_buffers.push_back(command_buffer->vk_command_buffer);
+                    }
+                }
+
+                if (!vk_command_buffers.empty()) {
+                    uint32_t semaphore_index = 0;
+                    if (cmd_queue->free_command_semaphores.empty()) {
+                        VkSemaphoreCreateInfo create_info = {};
+                        create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+                        VkSemaphore semaphore = VK_NULL_HANDLE;
+                        DODO_ASSERT_VK_RESULT(vkCreateSemaphore(_device, &create_info, VK_NULL_HANDLE, &semaphore));
+                        semaphore_index = cmd_queue->command_semaphores.size();
+                        cmd_queue->command_semaphores.push_back(semaphore);
+                    }
+                    else {
+                        semaphore_index = cmd_queue->free_command_semaphores.back();
+                        cmd_queue->free_command_semaphores.pop_back();
+                    }
+
+                    cmd_queue->pending_command_semaphores.push_back(semaphore_index);
+                    cmd_queue->pending_command_semaphores_for_fences.push_back(semaphore_index);
+                    vk_signal_semaphores.push_back(cmd_queue->command_semaphores.at(semaphore_index));
+
+                    if (SwapChain* swap_chain = _swap_chains.get_or_null(submit_specs.swap_chain)) {
+                        VkSemaphore present_semaphore = VK_NULL_HANDLE;
+                        if (swap_chain->present_semaphores.empty()) {
+                            VkSemaphoreCreateInfo create_info = {};
+                            create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+                            VkSemaphore semaphore = VK_NULL_HANDLE;
+                            for (uint32_t i = 0; i < swap_chain->framebuffer_count; i++) {
+                                DODO_ASSERT_VK_RESULT(vkCreateSemaphore(_device, &create_info, VK_NULL_HANDLE, &semaphore));
+                                swap_chain->present_semaphores.push_back(semaphore);
+                            }
+                        }
+
+                        present_semaphore = swap_chain->present_semaphores.at(swap_chain->frame_index);
+                        vk_signal_semaphores.push_back(present_semaphore);
+                    }
+
+                    VkSubmitInfo submit_info = {};
+                    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+                    submit_info.waitSemaphoreCount = static_cast<uint32_t>(vk_wait_semaphores.size());
+                    submit_info.pWaitSemaphores = vk_wait_semaphores.data();
+                    submit_info.pWaitDstStageMask = vk_wait_stages.data();
+                    submit_info.commandBufferCount = static_cast<uint32_t>(vk_command_buffers.size());
+                    submit_info.pCommandBuffers = vk_command_buffers.data();
+                    submit_info.signalSemaphoreCount = static_cast<uint32_t>(vk_signal_semaphores.size());
+                    submit_info.pSignalSemaphores = vk_signal_semaphores.data();
+                    DODO_ASSERT_VK_RESULT(vkQueueSubmit(vk_queue, 1, &submit_info, VK_NULL_HANDLE));
+                }
+            }
+
+            if (SwapChain* swap_chain = _swap_chains.get_or_null(submit_specs.swap_chain)) {
+
+
+                VkPresentInfoKHR present_info = {};
+                present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+                present_info.waitSemaphoreCount = static_cast<uint32_t>(vk_wait_semaphores.size());
+                present_info.pWaitSemaphores = vk_wait_semaphores.data();
+                present_info.swapchainCount = 1;
+                present_info.pSwapchains = &swap_chain->vk_swap_chain;
+                present_info.pImageIndices = &swap_chain->image_index;
+                VkResult result = _functions.QueuePresentKHR(queue, &present_info);
             }
         }
 
-        for (uint32_t i = 0; i < p_signal_semaphores.size(); i++) {
+        for (queueFlagsueFamilyIndext32_t i = 0; i < p_signal_semaphores.size(); i++) {
             VkSemaphore* semaphore = _semaphore_owner.get_or_null(p_signal_semaphores.at(i));
             signal_semaphores.push_back(*semaphore);
         }
@@ -226,25 +296,13 @@ namespace Dodo {
             cmd_queue->present_semaphore_index = (cmd_queue->present_semaphore_index + 1) % static_cast<uint32_t>(cmd_queue->present_semaphores.size());
         }
 
-		VkSubmitInfo submit_info = {};
-		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit_info.waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores.size());
-		submit_info.pWaitSemaphores = wait_semaphores.data();
-		submit_info.pWaitDstStageMask = wait_stages.data();
-		submit_info.commandBufferCount = static_cast<uint32_t>(vk_cmd_buffers.size());
-        submit_info.pCommandBuffers = vk_cmd_buffers.data();
-        submit_info.signalSemaphoreCount = static_cast<uint32_t>(signal_semaphores.size());
-        submit_info.pSignalSemaphores = signal_semaphores.data();
-        DODO_ASSERT_VK_RESULT(vkQueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE));
-
-        if (!fence) {
+        if (!wait_fence) {
             for (uint32_t i = 0; i < cmd_queue->pending_image_semaphores_for_fences.size(); i++) {
-                cmd_queue->image_semaphores_for_fences.push_back({ fence, cmd_queue->pending_image_semaphores_for_fences.at(i) });
+                cmd_queue->image_semaphores_for_fences.push_back({ wait_fence, cmd_queue->pending_image_semaphores_for_fences.at(i) });
             }
 
             cmd_queue->pending_image_semaphores_for_fences.clear();
-            fence->command_queue_to_signal = cmd_queue;
-            DODO_ASSERT_VK_RESULT(vkResetFences(_device, 1, &fence->vk_fence));
+            wait_fence->command_queue_to_signal = cmd_queue;
         }
 
         if (present_semaphore) {
@@ -253,14 +311,6 @@ namespace Dodo {
         }
 
         if (swap_chain) {
-            VkPresentInfoKHR present_info = {};
-            present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-            present_info.waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores.size());
-            present_info.pWaitSemaphores = wait_semaphores.data();
-            present_info.swapchainCount = 1;
-            present_info.pSwapchains = &swap_chain->vk_swap_chain;
-            present_info.pImageIndices = &swap_chain->image_index;
-            VkResult result = _functions.QueuePresentKHR(queue, &present_info);
             if (result == VK_ERROR_OUT_OF_DATE_KHR) {
                 _backend->surface_set_needs_resize(swap_chain->surface, true);
                 return false;
@@ -368,22 +418,23 @@ namespace Dodo {
         }
 
         auto free_semaphores_for_fences = [fence](std::vector<std::pair<Fence*, uint32_t>>& semaphores_for_fences, std::vector<uint32_t>& free_semaphores) {
-            uint32_t i = 0;
-            while (i < semaphores_for_fences.size()) {
-                const std::pair<Fence*, uint32_t>& semaphore_for_fence = semaphores_for_fences.at(i);
-                if (fence == semaphore_for_fence.first) {
-                    free_semaphores.push_back(semaphore_for_fence.second);
-                    semaphores_for_fences.erase(semaphores_for_fences.begin() + i);
-                }
-                else {
-                    i++;
-                }
-            }
+        free_semaphores_for_fences(command_queue->render_complete_semaphores_for_fences, command_queue->free_render_complete_semaphores);
+
         };
 
         CommandQueue* command_queue = fence->command_queue_to_signal;
+        uint32_t i = 0;
+        while (i < semaphores_for_fences.size()) {
+            const std::pair<Fence*, uint32_t>& semaphore_for_fence = semaphores_for_fences.at(i);
+            if (fence == semaphore_for_fence.first) {
+                free_semaphores.push_back(semaphore_for_fence.second);
+                semaphores_for_fences.erase(semaphores_for_fences.begin() + i);
+            }
+            else {
+                i++;
+            }
+        }
         free_semaphores_for_fences(command_queue->image_semaphores_for_fences, command_queue->free_image_semaphores);
-        free_semaphores_for_fences(command_queue->render_complete_semaphores_for_fences, command_queue->free_render_complete_semaphores);
         fence->command_queue_to_signal = nullptr;
     }
 
